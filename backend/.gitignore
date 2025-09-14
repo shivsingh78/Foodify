@@ -1,0 +1,13 @@
+# Node modules (big dependency folder)
+node_modules/
+
+# Environment variables (secrets like API keys, DB passwords)
+.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files (optional but good practice)
+.DS_Store
