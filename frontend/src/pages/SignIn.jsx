@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { FaRegEye } from "react-icons/fa";
 import { FaRegEyeSlash } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
+import ClipLoader from 'react-spinners/ClipLoader';
 import {useNavigate} from 'react-router-dom'
 import axios from 'axios'
 import { serverUrl } from '../App';
@@ -11,11 +12,13 @@ function SignIn() {
      const bgColor = '#fff9f6';
      const borderColor = '#ddd'
      const [showPassword,setShowPassword] = useState(false)
+     const [loading,setLoading]=useState(false)
      const navigate = useNavigate()
      const [email,setEmail]=useState("")
      const [password,setPassword]=useState("")
 
      const handleSignIn= async()=>{
+      setLoading(true)
       try{
         const result = await axios.post(`${serverUrl}/api/auth/signin`,{
           email,
@@ -28,6 +31,8 @@ function SignIn() {
         console.log(error);
         
 
+      } finally{
+        setLoading(false)
       }
       
      }
@@ -56,11 +61,11 @@ function SignIn() {
              <button className='absolute right-3 top-[14px] text-gray-500 cursor-pointer  ' onClick={()=>setShowPassword(prev=>!prev)} >{!showPassword? <FaRegEye/>  : <FaRegEyeSlash/> }</button>
            </div>
           </div>
-          <div className='text-right mb-4 text-[#ff4d2d] font-medium' onClick={()=>navigate("forgot-password")}>Forgot Password</div>
+          <div className='text-right mb-4 text-[#ff4d2d] font-medium cursor-pointer' onClick={()=>navigate("/forgot-password")}>Forgot Password</div>
 
          
-          <button className={`w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer `} onClick={handleSignIn} >
-            Sign In
+          <button className={`w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer `} onClick={handleSignIn} disabled={loading} >
+            {loading?(  <ClipLoader color="#fff" size={20} />):("Sign In")}
           </button>
 
           <button className='w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-100 cursor-pointer '>

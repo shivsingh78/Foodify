@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { FaRegEye } from "react-icons/fa";
 import { FaRegEyeSlash } from "react-icons/fa";
+import ClipLoader from 'react-spinners/ClipLoader';
 import { FcGoogle } from "react-icons/fc";
 import {useNavigate} from 'react-router-dom'
 import axios from 'axios'
@@ -11,6 +12,7 @@ function SignUp() {
      const bgColor = '#fff9f6';
      const borderColor = '#ddd'
      const [showPassword,setShowPassword] = useState(false)
+     const [loading,setLoading]=useState(false)
      const [role,setRole] = useState("user")
      const navigate = useNavigate()
      const [fullName,setFullName]=useState("")
@@ -20,6 +22,7 @@ function SignUp() {
 
      const handleSignUp= async()=>{
       try{
+        setLoading(true)
         const result = await axios.post(`${serverUrl}/api/auth/signup`,{
           fullName,
           email,
@@ -29,11 +32,14 @@ function SignUp() {
         },{withCredentials:true})
         console.log(result);
         
+        
 
       } catch(error){
         console.log(error);
         
 
+      }finally{
+        setLoading(false)
       }
       
      }
@@ -95,8 +101,8 @@ function SignUp() {
             
            </div>
           </div>
-          <button className={`w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer `} onClick={handleSignUp} >
-            Sign Up
+          <button className={`w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer `} onClick={handleSignUp} disabled={loading} >
+          {loading?(  <ClipLoader color="#fff" size={20} />):("Sign Up")}
           </button>
 
           <button className='w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-100 cursor-pointer '>
