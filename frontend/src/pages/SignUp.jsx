@@ -8,6 +8,8 @@ import axios from 'axios'
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { useDispatch } from 'react-redux';
+import { setUserData } from '../redux/userSlice';
 
 function SignUp() {
   const primaryColor = '#ff4d2d';
@@ -23,6 +25,7 @@ function SignUp() {
   const [mobile, setMobile] = useState("")
   const [password, setPassword] = useState("")
   const [err,setErr]=useState("")
+  const dispatch = useDispatch()
 
   const handleSignUp = async () => {
     try {
@@ -34,7 +37,7 @@ function SignUp() {
         mobile,
         role
       }, { withCredentials: true })
-      console.log(result);
+      dispatch(setUserData(result.data))
       setErr("")
     } catch (error) {
      setErr(error?.response?.data?.message)
@@ -59,7 +62,7 @@ function SignUp() {
         role,
         mobile,
       }, { withCredentials: true })
-      console.log(data)
+      dispatch(setUserData(data))
       
 
     } catch (error) {

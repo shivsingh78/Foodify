@@ -8,6 +8,8 @@ import axios from 'axios'
 import { serverUrl } from '../App';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { useDispatch } from 'react-redux';
+import { setUserData } from '../redux/userSlice';
 function SignIn() {
      const primaryColor = '#ff4d2d';
      const hoverColor = '#e64323';
@@ -19,6 +21,7 @@ function SignIn() {
      const [email,setEmail]=useState("")
      const [password,setPassword]=useState("")
      const [err,setErr]=useState("")
+     const dispatch = useDispatch()
 
      const handleSignIn= async()=>{
       setLoading(true)
@@ -27,7 +30,7 @@ function SignIn() {
           email,
           password,
         },{withCredentials:true})
-        console.log(result);
+        dispatch(setUserData(result.data))
         setErr("")
       } catch(error){
        setErr(error?.response?.data?.message)
@@ -47,7 +50,7 @@ function SignIn() {
            const {data} = await axios.post(`${serverUrl}/api/auth/google-auth`,{
              email:result.user.email,
            },{withCredentials:true})
-           console.log(data)
+         dispatch(setUserData(data))
      
          } catch (error) {
            console.log(error);
