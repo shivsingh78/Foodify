@@ -8,6 +8,7 @@ import { serverUrl } from '../App';
 import { setMyShopData } from '../redux/ownerSlice';
 
 
+
 function CreateEditShop() {
   const navigate=useNavigate()
   const {myShopData}=useSelector(state=>state.owner)
@@ -19,6 +20,7 @@ function CreateEditShop() {
   const [frontendImage,setFrontendImage]=useState(myShopData?.image || null)
   const [backendImage,setBackendImage]=useState(null)
   const dispatch=useDispatch()
+  
 
  const  handleImage=(e)=>{
   const file = e.target.files[0]
@@ -40,7 +42,7 @@ function CreateEditShop() {
     }
     const result = await axios.post(`${serverUrl}/api/shop/create-edit`,formData,{withCredentials:true})
     dispatch(setMyShopData(result.data))
-    console.log(result.data);
+   
     
   } catch (error) {
     console.log(error);

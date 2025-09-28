@@ -18,7 +18,10 @@ try {
      const item=await Item.create({
           name,category,foodType,price,image,shop:shop._id
      })
-     return res.status(201).json(item)
+     shop.items.push(item._id)
+     await shop.save()
+     await shop.populate("items owner")
+     return res.status(201).json(shop)
 } catch (error) {
      console.log(error);
      return res.status(500).json({message:"add item error"})

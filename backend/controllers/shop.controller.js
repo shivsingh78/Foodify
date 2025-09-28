@@ -48,7 +48,7 @@ export const createEditShop = async (req, res) => {
     }
 
     // 5. Populate safe owner info
-    await shop.populate("owner", "name email");
+    await shop.populate("owner items", "name email");
 
     // 6. Send response
     return res.status(statusCode).json({
