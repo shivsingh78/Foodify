@@ -6,6 +6,7 @@ import { FaUtensils } from "react-icons/fa";
 import axios from 'axios';
 import { serverUrl } from '../App';
 import { setMyShopData } from '../redux/ownerSlice';
+import ClipLoader from 'react-spinners/ClipLoader';
 
 
 
@@ -21,6 +22,7 @@ function EditItem() {
   const [backendImage,setBackendImage]=useState(null)
   const [category,setCategory]=useState("")
   const [foodType,setFoodType]=useState( "")
+  const [loading,setLoading]=useState(false)
   
   const categories=[
                "Snacks",
@@ -47,6 +49,7 @@ function EditItem() {
 
  }
  const handleSubmit=async(e)=>{
+     setLoading(true)
   e.preventDefault()
   try {
     const formData=new FormData()
@@ -60,12 +63,11 @@ function EditItem() {
     }
     const result = await axios.post(`${serverUrl}/api/item/edit-item/${itemId}`,formData,{withCredentials:true})
     dispatch(setMyShopData(result.data))
-    console.log(result.data);
-    
-   
-    
+    setLoading(false)
+    navigate("/")
   } catch (error) {
     console.log(error);
+    setLoading(false)
     
     
   }
@@ -152,7 +154,7 @@ function EditItem() {
                 </select>
           </div>
           
-          <button className='w-full bg-[#ff4d2d] text-white px-6  py-3 rounded-lg font-semibold shadow-md hover:bg-orange-600 hover:shadow-lg transition-all duration-200 cursor-pointer ' onClick={handleSubmit} >Save</button>
+          <button className='w-full bg-[#ff4d2d] text-white px-6  py-3 rounded-lg font-semibold shadow-md hover:bg-orange-600 hover:shadow-lg transition-all duration-200 cursor-pointer ' onClick={handleSubmit} disabled={loading} >{loading?<ClipLoader size={20} color="white" />:"Save" } </button>
         </form>
       </div>
      

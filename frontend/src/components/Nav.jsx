@@ -9,6 +9,7 @@ import axios from 'axios';
 import { setUserData } from '../redux/userSlice';
 import { FaPlus } from "react-icons/fa6";
 import { TbReceipt2 } from "react-icons/tb";
+import { useNavigate } from 'react-router-dom';
 
 
 function Nav() {
@@ -16,6 +17,7 @@ function Nav() {
      const {myShopData} =useSelector(state=>state.owner)
      const [showInfo,setShowInfo]=useState(false)
      const [showSearch,setShowSearch] =useState(false)
+     const navigate= useNavigate()
      const dispatch = useDispatch()
      const handleLogout = async () => {
           try {
@@ -68,11 +70,11 @@ function Nav() {
 
           {userData.role=="owner" ? <>
           {myShopData && <>
-          <button className='hidden md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]  '>
+          <button className='hidden md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]  ' onClick={()=>navigate("/add-item")} >
                <FaPlus size={20}/>
                <span>Add Food Item</span>
           </button>
-          <button className='md:hidden flex items-center  p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]  '>
+          <button className='md:hidden flex items-center  p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]  ' onClick={()=>navigate("/add-item")}>
                <FaPlus size={20}/>
                
           </button>
@@ -109,7 +111,7 @@ function Nav() {
           </div>
           {showInfo && <div className='fixed top-[80px] right-[10px] md:right-[10%] lg:right-[25%] w-[180px] bg-white shadow-2xl rounded-xl p-[20px] flex flex-col gap-[10px] z-[9999] '>
                <div className='text-[17px] font-semibold '>{userData.fullName} </div>
-               <div className='md:hidden text-[#ff4d2d] font-semibold cursor-pointer '>My orders</div>
+               {userData.role == "user" && <div className='md:hidden text-[#ff4d2d] font-semibold cursor-pointer '>My orders</div>}
                <div className='text-[#ff4d2d] font-semibold cursor-pointer' onClick={handleLogout}>Log Out</div>
 
           </div>}
