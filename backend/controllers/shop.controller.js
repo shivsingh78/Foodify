@@ -80,4 +80,22 @@ export const getMyShop= async (req,res) => {
   }
 }
 
+export const getShopByCity = async (req,res)=> {
+  try {
+    const {city} = req.params;
+    const shops= await Shop.find({
+      city:{$regex:new RegExp(`^${city}$`,"i")}
+    }).populate('items')
+    if(!shops){
+      return res.status(400).json({message:"shops not foung"})
+    }
+    return res.status(201).json(shops)
+  } catch (error) {
+     console.error("createEditShop error:", error);
+    return res.status(500).json({ message: "get my shop city error " });
+  }
+  }
+
+
+
 

@@ -6,10 +6,13 @@ import CategoryCard from './CategoryCard';
 import { FaCircleChevronLeft , FaCircleChevronRight } from "react-icons/fa6";
 
 function UserDashboard() {
-  const {currentCity}=useSelector(state=>state.user)
+  const {currentCity,shopInMyCity}=useSelector(state => state.user)
   const cateScrollRef=useRef()
+  const shopScrollRef=useRef()
   const [showLeftCateButton,setShowLeftCateButton]=useState(false)
   const [showRightCateButton,setShowRightCateButton]=useState(false)
+  const [showLeftShopButton,setShowLeftShopButton]=useState(false)
+  const [showRightShopButton,setShowRightShopButton]=useState(false)
 
   const updateButton=(ref,setLeftButton,setRightButton)=>{
 const element = ref.current;
@@ -30,17 +33,29 @@ if(element){
   }
 
   useEffect(() => {
-  const element = cateScrollRef.current;
-  if (element) {
-    const handler = () => updateButton(cateScrollRef, setShowLeftCateButton, setShowRightCateButton);
-
-    element.addEventListener("scroll", handler);
-
-    // Run once initially
-    handler();
-
-    return () => element.removeEventListener("scroll", handler);
+  const element = cateScrollRef.current ;
+  const elementShop = shopScrollRef.current;
+  const cateHandler=()=>{
+    updateButton(cateScrollRef, setShowLeftCateButton, setShowRightCateButton);
   }
+  const shopHandler=()=>{
+    updateButton(shopScrollRef,setShowLeftShopButton,setShowRightShopButton)
+  }
+  if (element) {
+element.addEventListener("scroll", cateHandler);
+    // Run once initially
+    cateHandler();
+  }
+  if(elementShop){
+    elementShop.addEventListener("scroll",shopHandler)
+    shopHandler()
+  }
+
+   // cleanup BOTH listeners
+  return () => {
+    if (element) element.removeEventListener("scroll", cateHandler);
+    if (elementShop) elementShop.removeEventListener("scroll", shopHandler);
+  };
 }, []);
 
 
@@ -59,7 +74,7 @@ if(element){
          
        <div className='w-full flex overflow-x-auto gap-4 pb-2   ' ref={cateScrollRef}>
          {categories.map((cate,index)=>(
-          <CategoryCard data={cate} key={index} />
+          <CategoryCard name={cate.category} image={cate.image} key={index} />
         )) }
        </div>
        {/*right button*/}
@@ -74,7 +89,33 @@ if(element){
       {/*for Shop */}
      <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px] '>
        <h1 className='text-gray-800 text-2xl sm:text-3xl ' > Best Shop in {currentCity} </h1>
+        <div className="w-full relative">
+         {/*left button*/}
+         {showLeftShopButton && <button className='absolute left-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"left")} >
+         
+          <FaCircleChevronLeft/>
+      </button> }
+         
+       <div className='w-full flex overflow-x-auto gap-4 pb-2   ' ref={shopScrollRef}>
+         {shopInMyCity?.map((shop,index)=>(
+          <CategoryCard name={shop.name} image={shop.image} key={index} />
+        )) }
+       </div>
+       {/*right button*/}
+       {showRightShopButton && <button className='absolute right-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"right")}>
+        <FaCircleChevronRight/>
+       
+
+       </button>}
+      </div>
      </div>
+
+       {/*for Shop Items */}
+       <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px] '>
+         <h1 className='text-gray-800 text-2xl sm:text-3xl ' > Suggested Food Items </h1>
+        
+
+       </div>
 
     </div>
   )
