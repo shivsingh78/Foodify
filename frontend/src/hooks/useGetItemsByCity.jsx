@@ -3,7 +3,7 @@ import React from 'react'
 import { useEffect } from 'react'
 import { serverUrl } from '../App'
 import { useDispatch, useSelector } from 'react-redux'
-import { setItemsInMyCity, setShopsInMyCity } from '../redux/userSlice'
+import { setItemsInMyCity,  } from '../redux/userSlice'
 
 function useGetItemsByCity() {
      const dispatch = useDispatch()

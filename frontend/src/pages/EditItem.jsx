@@ -49,8 +49,9 @@ function EditItem() {
 
  }
  const handleSubmit=async(e)=>{
+   e.preventDefault()
      setLoading(true)
-  e.preventDefault()
+ 
   try {
     const formData=new FormData()
     formData.append("name",name)
@@ -63,6 +64,8 @@ function EditItem() {
     }
     const result = await axios.post(`${serverUrl}/api/item/edit-item/${itemId}`,formData,{withCredentials:true})
     dispatch(setMyShopData(result.data))
+    console.log(result.data);
+    
     setLoading(false)
     navigate("/")
   } catch (error) {

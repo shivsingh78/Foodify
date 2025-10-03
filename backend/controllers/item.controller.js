@@ -35,34 +35,38 @@ try {
      
 }
 
-export const editItem = async (req,res) => {
-     try {
-          const itemId=req.params.itemId;
-           const {name,category,foodType,price}=req.body;
-           let image;
-           if(req.file){
-               image=await uploadOnCloudinary(req.file.path)
-           }
-           const item=await Item.findByIdAndUpdate(itemId,{ name,category,foodType,price },{new:true})
+export const editItem = async (req, res) => {
+  try {
+    const itemId = req.params.itemId;
+    const { name, category, foodType, price } = req.body;
 
-           if(!item){
-                return res.status(400).json({message:"item not found"})
+    let updateFields = { name, category, foodType, price };
 
-           }
-           const shop = await Shop.findOne({owner:req.userId}).populate({
-               path:"items",
-               options:{sort:{updatedAt:-1}}
-           })
-           return res.status(201).json(shop)
-           
-     } catch (error) {
-          console.log(error);
-          
-           return res.status(500).json({message:"edit item error"})
-          
-     }
-     
-}
+    if (req.file) {
+      const imageUrl = await uploadOnCloudinary(req.file.path);
+      if (imageUrl) {
+        updateFields.image = imageUrl; // ✅ set new image
+      }
+    }
+
+    const item = await Item.findByIdAndUpdate(itemId, updateFields, { new: true });
+
+    if (!item) {
+      return res.status(400).json({ message: "item not found" });
+    }
+
+    const shop = await Shop.findOne({ owner: req.userId }).populate({
+      path: "items",
+      options: { sort: { updatedAt: -1 } }
+    });
+
+    return res.status(200).json(shop);
+
+  } catch (error) {
+    console.log("Edit Item Error:", error);
+    return res.status(500).json({ message: "edit item error" });
+  }
+};
 
 export const getItemById=async (req,res) => {
      try {
