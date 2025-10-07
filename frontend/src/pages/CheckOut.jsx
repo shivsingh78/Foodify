@@ -16,7 +16,7 @@ import axios from 'axios';
 function RecenterMap({location}){
   if(location.lat && location.lon){
     const map=useMap()
-    map.setView([location.lat,location.lon]),17,{animate:true}
+    map.setView([location.lat,location.lon],17,{animate:true})
   }
   return null
 }
@@ -32,6 +32,8 @@ function CheckOut() {
    const deliveryFee = totalAmount>500?0:40
 
    const amountWithDeliveryFee=totalAmount+deliveryFee;
+
+   const center = location.lat && location.lon ? [location.lat,location.lon]: [20.5937, 78.9629]; // default India
   
 
   const onDragEnd=(e)=>{
@@ -62,7 +64,8 @@ function CheckOut() {
       dispatch(setAddress(result?.data.results[0].formatted || result?.data.results[0].address_line2))
       
     } catch (error) {
-      console.log(error);
+      console.log("Failed to fetch address", error);
+      alert("Unable to get address. please try again")
       
       
     }
@@ -89,6 +92,7 @@ function CheckOut() {
 
   const navigate=useNavigate()
   return (
+    
     <div className='min-h-screen bg-[#fff9f6] flex items-center justify-center p-6 '>
        <div className='absolute top-[20px] left-[20px]  z-[10]  ' onClick={()=> navigate("/cart")}>
         <IoIosArrowRoundBack  size={35} className=' text-[#ff4d2d] cursor-pointer '  />
@@ -112,7 +116,7 @@ function CheckOut() {
           <div className='rounded-xl border overflow-hidden '>
             <div className="h-64 w-full flex items-center justify-center ">
 
-              <MapContainer className={"w-full h-full"} center={[location?.lat,location?.lon]} zoom={17} 
+              <MapContainer className={"w-full h-full"} center={center} zoom={17} 
                >
                 <TileLayer
       attribution='&copy; <a href="https://www.openstreetmap.org/copyright"></a> '
