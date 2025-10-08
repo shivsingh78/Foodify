@@ -23,6 +23,7 @@ function RecenterMap({location}){
 }
 
 function CheckOut() {
+ 
   const [addressInput,setAddressInput]=useState('')
   const [paymentMethod,setPaymentMethod]= useState('cod')
   const {location,address}=useSelector(state=>state.map)
@@ -97,6 +98,7 @@ function CheckOut() {
 
       },{withCredentials:true})
       console.log(result.data);
+      navigate("/order-placed")
       
     } catch (error) {
       console.log(error);
@@ -223,7 +225,7 @@ function CheckOut() {
          </div>
 
          </section>
-         <button className="w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold  "  onClick={handlePlaceOrder}>{paymentMethod==="cod" ? "Place Order" :"Pay & Place Order" } </button>
+         <button className="w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold cursor-pointer  "  onClick={handlePlaceOrder}  >{paymentMethod==="cod" ? "Place Order" :"Pay & Place Order" } </button>
          
       </div>
       

@@ -36,7 +36,7 @@ export const placeOrder = async (req,res) => {
                     owner:shop.owner._id,
                     subtotal,
                      shopOrderItems:items.map((i)=>({
-                         item:i._id,
+                         item:i.id,
                          name:i.name,
                          price:i.price,
                          quantity:i.quantity
@@ -69,4 +69,44 @@ export const placeOrder = async (req,res) => {
           
           
      }
+}
+
+//get user orders
+
+export const getUserOrders=async (req,res) => {
+     try {
+          const orders = await Order.find({user:req.userId})
+          .sort({createdAt:-1})
+          .populate("shopOrders.shop","name")
+          .populate("shopOrders.owner","name email mobile")
+          .populate("shopOrders.shopOrderItems.item","name image price")
+
+          return res.status(200).json(orders)
+     } catch(error){
+           console.log(error);
+          return res.status(500).json({
+               success:false ,
+               message:"Failed to get user order",
+               error:error.message,
+          })
+     }
+}
+
+export const getOwnerOrders = async (req,res) => {
+     try {
+          const orders = await Order.find({"shopOrders.owner":req.userId})
+          .sort({createdAt:-1})
+          .populate("shopOrders.shop","name")
+          .populate("user")
+          .populate("shopOrders.shopOrderItems","name image price")
+          return res.status(200).json(orders)
+     } catch (error) {
+          console.log(error);
+          return res.status(500).json({
+               success:false ,
+               message:"Failed to get owner order",
+               error:error.message,
+          })
+     }
+     
 }
