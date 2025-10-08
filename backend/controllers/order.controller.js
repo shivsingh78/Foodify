@@ -1,5 +1,6 @@
 import Order from "../models/order.model.js";
 import Shop from "../models/shop.model.js";
+import User from "../models/user.model.js";
 
 export const placeOrder = async (req,res) => {
      try {
@@ -73,15 +74,27 @@ export const placeOrder = async (req,res) => {
 
 //get user orders
 
-export const getUserOrders=async (req,res) => {
+export const getMyOrders=async (req,res) => {
      try {
-          const orders = await Order.find({user:req.userId})
+          const user=await User.findById(req.userId)
+          if(user.role === "user"){
+               const orders = await Order.find({user:req.userId})
           .sort({createdAt:-1})
           .populate("shopOrders.shop","name")
           .populate("shopOrders.owner","name email mobile")
           .populate("shopOrders.shopOrderItems.item","name image price")
 
           return res.status(200).json(orders)
+
+          } else if(user.role==="owner"){
+                const orders = await Order.find({"shopOrders.owner":req.userId})
+          .sort({createdAt:-1})
+          .populate("shopOrders.shop","name")
+          .populate("user")
+          .populate("shopOrders.shopOrderItems","name image price")
+          return res.status(200).json(orders)
+          }
+          
      } catch(error){
            console.log(error);
           return res.status(500).json({
@@ -92,21 +105,3 @@ export const getUserOrders=async (req,res) => {
      }
 }
 
-export const getOwnerOrders = async (req,res) => {
-     try {
-          const orders = await Order.find({"shopOrders.owner":req.userId})
-          .sort({createdAt:-1})
-          .populate("shopOrders.shop","name")
-          .populate("user")
-          .populate("shopOrders.shopOrderItems","name image price")
-          return res.status(200).json(orders)
-     } catch (error) {
-          console.log(error);
-          return res.status(500).json({
-               success:false ,
-               message:"Failed to get owner order",
-               error:error.message,
-          })
-     }
-     
-}

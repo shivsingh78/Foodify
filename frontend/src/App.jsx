@@ -17,6 +17,7 @@ import CartPage from './pages/CartPage';
 import CheckOut from './pages/CheckOut';
 import OrderPlaced from './pages/OrderPlaced';
 import MyOrders from './pages/MyOrders';
+import useGetMyOrders from './hooks/useGetMyOrders';
 export const serverUrl="http://localhost:8000";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
   useGetItemsByCity()
   useGetCurrentUser()
   useGetCity()
+  useGetMyOrders()
   return (
    <Routes>
     <Route path='/signup' element={!userData?<SignUp/>: <Navigate to={"/"} /> } />
