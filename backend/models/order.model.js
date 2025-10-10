@@ -26,7 +26,12 @@ const shopOrderSchema=new mongoose.Schema({
           type:String,
           enum:["pending","preparing","out of delivery","delivered"],
           default:"pending"
-     }
+     },
+     assignment:{
+          type:mongoose.Schema.Types.ObjectId,
+          ref:"DeliveryAssignment"
+     },
+     
 },{timestamps:true})
 
 const orderSchema=new mongoose.Schema({
@@ -48,7 +53,8 @@ const orderSchema=new mongoose.Schema({
      totalAmount:{
           type:Number
      },
-     shopOrders:[shopOrderSchema]
+     shopOrders:[shopOrderSchema],
+     
 
 },{timestamps:true})
 
