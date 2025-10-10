@@ -3,7 +3,8 @@ import { IoIosArrowRoundBack } from "react-icons/io";
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import UserOrderCard from '../components/userOrderCard';
-import OwnerDashboard from '../components/OwnerDashboard';
+import OwnerOrderCard from '../components/ownerOrderCard';
+
 
 function MyOrders() {
      const {userData,myOrders}=useSelector(state=>state.user)
@@ -25,7 +26,7 @@ function MyOrders() {
                <UserOrderCard data={order} key={index} />
           ):
           userData.role === "owner" ? (
-               <OwnerDashboard data={order} key={index} />
+               <OwnerOrderCard data={order} key={index} />
           ):null
                               ))
                          }
