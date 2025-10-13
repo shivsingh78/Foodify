@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { updateOrderStatus } from '../redux/userSlice';
 import { useState } from 'react';
+import { useEffect } from 'react';
 
 function OwnerOrderCard({data}) {
   const [availableBoys,setAvailableBoys]=useState([])
@@ -16,6 +17,8 @@ function OwnerOrderCard({data}) {
     setAvailableBoys(result.data.availableBoys)
     console.log(result.data);
     
+    
+    
       
     } catch (error) {
       console.log(error);
@@ -23,6 +26,7 @@ function OwnerOrderCard({data}) {
       
     }
   }
+  
   
 
   return (

@@ -61,7 +61,7 @@ element.addEventListener("scroll", cateHandler);
 
 
   return (
-    <div className='w-full min-h-screen bg-[#fff9f6] flex flex-col items-center '>
+    <div className='w-full min-h-screen bg-[#fff9f6] flex flex-col items-center overflow-y-auto '>
      <Nav/>
       {/*for category*/}
      <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]  '>

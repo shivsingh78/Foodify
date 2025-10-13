@@ -1,10 +1,13 @@
+// Import all required Mongoose models
 import DeliveryAssignment from "../models/deliveryAssignment.model.js";
 import Order from "../models/order.model.js";
 import Shop from "../models/shop.model.js";
 import User from "../models/user.model.js";
 
+//controller for place order
 export const placeOrder = async (req,res) => {
      try {
+
           const {cartItems,paymentMethod,deliveryAddress,totalAmount}=req.body;
 
           if(!cartItems || cartItems.length === 0 ){
@@ -13,9 +16,9 @@ export const placeOrder = async (req,res) => {
           if(!deliveryAddress.text || !deliveryAddress.latitude || !deliveryAddress.longitude){
                 return res.status(400).json({message:"send complete deliveryAddress"})
           }
-
+          // Object to group cart items by shop
           const groupItemsByShop={}
-
+          //✅ Group each item by its shopId
           cartItems.forEach(item => {
                const shopId=item.shop;
                if(!groupItemsByShop[shopId]){
@@ -24,14 +27,19 @@ export const placeOrder = async (req,res) => {
                groupItemsByShop[shopId].push(item)
                
           });
+          //✅ For each shop, calculate subtotal and prepare sub-order
 
           const shopOrders = await Promise.all( Object.keys(groupItemsByShop).map( async (shopId) => {
               try {
+               //Find shop and its owner details
                 const shop = await Shop.findById(shopId).populate("owner")
                if(!shop) throw new Error(`shop with ${shopId} not found`)
 
                const items=groupItemsByShop[shopId]
+               //Calculate subtotal for this shop
                const subtotal=items.reduce((sum,i)=> sum + Number(i.price)*Number(i.quantity),0)
+
+               // Return sub-order structure for this shop
 
                return {
                     shop:shop._id,
@@ -51,6 +59,8 @@ export const placeOrder = async (req,res) => {
               }
           }))
 
+          // Create main order document
+
           const newOrder = await Order.create({
                user:req.userId,
                paymentMethod,
@@ -58,8 +68,12 @@ export const placeOrder = async (req,res) => {
                totalAmount,
                shopOrders,
           })
+
+          // Populate referenced fields for detailed response 
           await newOrder.populate("shopOrders.shopOrderItems.item","name image price")
           await newOrder.populate("shopOrders.shop","name")
+
+          // Send created order back to client 
           return res.status(201).json(newOrder)
 
 
@@ -81,6 +95,7 @@ export const placeOrder = async (req,res) => {
 export const getMyOrders=async (req,res) => {
      try {
           const user=await User.findById(req.userId)
+          // CASE 1: When user is a customer
           if(user.role === "user"){
                const orders = await Order.find({user:req.userId})
           .sort({createdAt:-1})
@@ -90,12 +105,16 @@ export const getMyOrders=async (req,res) => {
 
           return res.status(200).json(orders)
 
+          // CASE 2: When user is a shop owner
+
           } else if(user.role==="owner"){
                 const orders = await Order.find({"shopOrders.owner":req.userId})
           .sort({createdAt:-1})
           .populate("shopOrders.shop","name")
           .populate("user")
           .populate("shopOrders.shopOrderItems.item","name image price")
+
+          // Filter each order to only include that owner's shopOrders
 
           const filterOrders=orders.map((order=>(
                {
@@ -120,21 +139,29 @@ export const getMyOrders=async (req,res) => {
           })
      }
 }
-
+// update order status and find nearby delivery boys
 export const updateOrderStatus = async (req,res) => {
      try {
+          console.log(req.params);
+          
           const {orderId,shopId}=req.params;
           const {status}=req.body;
+          //Find main order and the shop-specific sub order
           const order = await Order.findById(orderId)
           const shopOrder = order.shopOrders.find(o=>o.shop==shopId)
           if(!shopOrder){
                return res.status(400).json({message:"shop order not found"})
           }
+          //update order status
           shopOrder.status=status;
           let deliveryBoysPayload=[]
 
-          if(status=="out of delivery" && !shopOrder.assignment){
+          // If status is "out of delivery ", find nearby delivery boys 
+
+          if(status=="out of delivery" || !shopOrder.assignment){
                const {longitude,latitude}=order.deliveryAddress;
+
+               // Find all delivery boys within 5km radius
                const nearByDeliveryBoys = await User.find({
                     role:"deliveryBoy",
                     location:{
@@ -146,17 +173,25 @@ export const updateOrderStatus = async (req,res) => {
 
                })
 
+               //Get list of nearby IDs
+
                const nearByIds = nearByDeliveryBoys.map(b=>b._id)
+               //Find delivery boys who are currently busy (not available)
                const busyIds = await DeliveryAssignment.find({
                     assignedTo:{$in:nearByIds},
                     status:{$nin:["brodcasted","completed"]}
                }).distinct("assignedTo")
+
+               //Filter out busy delivery boys
 
                const busyIdSet = new Set(busyIds.map(id => String(id)))
 
                const avilableBoys=nearByDeliveryBoys.filter(b=>!busyIdSet.has(String(b._id)))
 
                const candidates=avilableBoys.map(b=>b._id)
+               console.log("candidates");
+               
+               //If no delivery boys available, just save order and respond
                if(candidates.length==0){
                     await order.save()
                     return res.json({
@@ -164,16 +199,23 @@ export const updateOrderStatus = async (req,res) => {
                     })
                }
 
+               // Create a new DeliveryAssignment document
+               console.log(candidates);
+               
+
                const deliveryAssignment =await DeliveryAssignment.create({
                     order:order._id,
                     shop:shopOrder.shop,
-                    shopOrder:shopOrder._id,
-                    broadcastedTo:candidates,
+                    shopOrderId:shopOrder._id,
+                    brodcastedTo:candidates,
                     status:"brodcasted"
 
                })
+               //Attach assignment info to shop order
                shopOrder.assignedDeliveryBoy=deliveryAssignment.assignedTo
                shopOrder.assignment=deliveryAssignment._id;
+
+               //Prepare structtured info for frontend map/tracking
 
                deliveryBoysPayload=avilableBoys.map(b=>({
                     id:b._id,
@@ -185,15 +227,18 @@ export const updateOrderStatus = async (req,res) => {
 
           }
 
+          //Save both main order and shop sub-order
+
           await shopOrder.save()
           await order.save()
+          //Find updated shop order again after save
            const updatedShopOrder = order.shopOrders.find(o=>o.shop==shopId)
 
           await order.populate("shopOrders.shop","name")
           await order.populate("shopOrders.assignedDeliveryBoy","fullName email mobile")
 
          
-          
+          //✅ Send response with updated data
           return res.status(200).json({
                shopOrder:updatedShopOrder,
                assignedDeliveryBoy:updatedShopOrder?.assignedDeliveryBoy,
@@ -204,6 +249,36 @@ export const updateOrderStatus = async (req,res) => {
           console.log(error);
           
           return res.status(500).json({message:"order error "})
+          
+     }
+}
+
+export const getDeliveryBoyAssignment = async (req,res) => {
+     try {
+          
+          const deliveryBoyId=req.userId;
+          const assignment = await DeliveryAssignment.find({
+               brodcastedTo:deliveryBoyId,
+               status:"brodcasted"
+          })
+          .populate("order")
+          .populate("shop")
+
+          const formated = assignment.map(a=>({
+               assignmentId:a._id,
+               orderId:a.order._id,
+               shopName:a.shop.name,
+               deliveryAddress:a.order.deliveryAddress,
+               items:a.order.shopOrders.find(so=>so._id.equals(a.shopOrderId))?.shopOrderItems || [],
+               subtotal:a.order.shopOrders.find(so=>so._id.equals(a.shopOrderId))?.subtotal
+               
+               
+          }))
+          return res.status(200).json(formated)
+     } catch (error) {
+          console.log(error);
+          return res.status(500).json({message: "get delivery boy Assignment error"})
+          
           
      }
 }
