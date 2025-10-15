@@ -142,7 +142,7 @@ export const getMyOrders=async (req,res) => {
 // update order status and find nearby delivery boys
 export const updateOrderStatus = async (req,res) => {
      try {
-          console.log(req.params);
+         
           
           const {orderId,shopId}=req.params;
           const {status}=req.body;
@@ -158,7 +158,7 @@ export const updateOrderStatus = async (req,res) => {
 
           // If status is "out of delivery ", find nearby delivery boys 
 
-          if(status=="out of delivery" || !shopOrder.assignment){
+          if(status=="out of delivery" && !shopOrder.assignment){
                const {longitude,latitude}=order.deliveryAddress;
 
                // Find all delivery boys within 5km radius
@@ -189,7 +189,7 @@ export const updateOrderStatus = async (req,res) => {
                const avilableBoys=nearByDeliveryBoys.filter(b=>!busyIdSet.has(String(b._id)))
 
                const candidates=avilableBoys.map(b=>b._id)
-               console.log("candidates");
+              
                
                //If no delivery boys available, just save order and respond
                if(candidates.length==0){
@@ -200,7 +200,7 @@ export const updateOrderStatus = async (req,res) => {
                }
 
                // Create a new DeliveryAssignment document
-               console.log(candidates);
+             
                
 
                const deliveryAssignment =await DeliveryAssignment.create({
@@ -279,6 +279,57 @@ export const getDeliveryBoyAssignment = async (req,res) => {
           console.log(error);
           return res.status(500).json({message: "get delivery boy Assignment error"})
           
+          
+     }
+}
+
+
+// controller for accept delivery boy
+
+export const acceptOrder = async (req,res) => {
+     try {
+          const {assignmentId} = req.params;
+          const assignment = await DeliveryAssignment.findById(assignmentId)
+          if(!assignment){
+               return res.status(404).json({message:"assignment is not found "})
+          }
+          if(assignment.status !== "brodcasted"){
+               return res.status(409).json({message:"assignment is expired"})
+          }
+          const alreadyAssigned = await DeliveryAssignment.findOne({
+               assignedTo:req.userId,
+               status:{$nin:["brodcasted","completed"]}
+          })
+          if(alreadyAssigned){
+               return res.status(400).json({message:"You are already assigned to another order"})
+          }
+
+          assignment.assignedTo = req.userId
+          assignment.status='assigned'
+          assignment.acceptedAt=new Date()
+          await assignment.save()
+
+          const order = await Order.findById(assignment.order)
+          if(!order){
+               return res.status(400).json({message:"order not found"})
+          }
+          const shopOrder = order.shopOrders.find(so=>so._id.equals(assignment.shopOrderId))
+          shopOrder.assignedDeliveryBoy=req.userId
+
+          await order.save()
+
+          return res.status(200).json({
+               sucess:true,
+               message:"order accepted sucessfully",
+               assignmentId:assignment._id,
+               orderId:order._id
+          })
+
+
+     } catch (error) {
+          console.log(error);
+          
+           return res.status(500).json({message:"Error accepting order"})
           
      }
 }
