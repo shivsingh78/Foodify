@@ -11,6 +11,7 @@ function DelieveryBoy() {
   const {userData}=useSelector(state=>state.user)
   const [availableAssignments,setAvailableAssignments]=useState(null)
   const [currentOrder,setCurrentOrder]=useState()
+  const [showOtpBox,setShowOtpBox]=useState(false)
 
   const getAssignments=async ()=> {
     try {
@@ -42,6 +43,9 @@ function DelieveryBoy() {
       
       
     }
+  }
+  const handleSendOtp = (e)=> {
+    setShowOtpBox(true)
   }
 
 
@@ -103,9 +107,21 @@ function DelieveryBoy() {
           <div className='border rounded-lg p-4 mb-3 '>
             <p className="font-semibold text-sm ">{currentOrder?.shopOrder.shop.name } </p>
             <p className="text-sm text-gray-500">{currentOrder?.deliveryAddress.text } </p>
-            <p className="text-xs text-gray-400">{currentOrder?.shopOrder.shopOrderItems.length } items | {currentOrder.shopOrder.subtotal} </p>
+            <p className="text-xs text-gray-400">{currentOrder?.shopOrder.shopOrderItems.length } items | ₹{currentOrder.shopOrder.subtotal} </p>
           </div>
           <DeliveryBoyTracking data={currentOrder}/>
+
+          {!showOtpBox ? (<button className='mt-4 w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition-all duration-200 cursor-pointer' onClick={handleSendOtp}>
+            Mark As Delivered
+          </button>)
+          :
+          (<div className='t-4 p-4 border rounded-xl bg-gray-50 '>
+            <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-orange-500 '>{currentOrder.user.fullName}</span> </p>
+            <input type="text" className='w-full  border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400 ' placeholder='Enter OTP' />
+            <button className='w-full bg-orange-500 text-white py-2 rounded-lg font-semibold hover:bg-orange-600 transition-all cursor-pointer'>Submit OTP </button>
+            
+
+          </div> )}
 
           </div>}
 
