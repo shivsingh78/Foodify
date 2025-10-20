@@ -14,6 +14,23 @@ function UserDashboard() {
   const [showRightCateButton,setShowRightCateButton]=useState(false)
   const [showLeftShopButton,setShowLeftShopButton]=useState(false)
   const [showRightShopButton,setShowRightShopButton]=useState(false)
+  const [updatedItemsList,setUpdatedItemsList] = useState([])
+
+
+const handleFilterByCategory = (category)=> {
+  if(category == "ALL"){
+    setUpdatedItemsList(itemsInMyCity)
+  }else {
+    const filteredList = itemsInMyCity.filter(i=>i.category === category)
+    setUpdatedItemsList(filteredList)
+  }
+}
+
+useEffect(()=>{
+  setUpdatedItemsList(itemsInMyCity)
+},[itemsInMyCity])
+
+
 
   const updateButton=(ref,setLeftButton,setRightButton)=>{
 const element = ref.current;
@@ -75,7 +92,8 @@ element.addEventListener("scroll", cateHandler);
          
        <div className='w-full flex overflow-x-auto gap-4 pb-2   ' ref={cateScrollRef}>
          {categories.map((cate,index)=>(
-          <CategoryCard name={cate.category} image={cate.image} key={index} />
+          <CategoryCard name={cate.category} image={cate.image} key={index} onClick={()=>handleFilterByCategory(cate.category)} />
+          
         )) }
        </div>
        {/*right button*/}
@@ -116,7 +134,7 @@ element.addEventListener("scroll", cateHandler);
          <h1 className='text-gray-800 text-2xl sm:text-3xl ' > Suggested Food Items </h1>
 
          <div className='w-full h-auto flex flex-wrap gap-[20px] justify-center  '>
-          {itemsInMyCity?.map((item,index)=>(
+          {updatedItemsList?.map((item,index)=>(
             <FoodCard key={index} data={item}/>
           ))}
 
