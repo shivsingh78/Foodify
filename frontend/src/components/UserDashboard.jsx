@@ -5,6 +5,7 @@ import { categories } from '../category';
 import CategoryCard from './CategoryCard';
 import { FaCircleChevronLeft , FaCircleChevronRight } from "react-icons/fa6";
 import FoodCard from './FoodCard';
+import { useNavigate } from 'react-router-dom';
 
 function UserDashboard() {
   const {currentCity,shopInMyCity,itemsInMyCity}=useSelector(state => state.user)
@@ -15,6 +16,7 @@ function UserDashboard() {
   const [showLeftShopButton,setShowLeftShopButton]=useState(false)
   const [showRightShopButton,setShowRightShopButton]=useState(false)
   const [updatedItemsList,setUpdatedItemsList] = useState([])
+  const navigate = useNavigate()
 
 
 const handleFilterByCategory = (category)=> {
@@ -117,7 +119,8 @@ element.addEventListener("scroll", cateHandler);
          
        <div className='w-full flex overflow-x-auto gap-4 pb-2   ' ref={shopScrollRef}>
          {shopInMyCity?.map((shop,index)=>(
-          <CategoryCard name={shop.name} image={shop.image} key={index} />
+          <CategoryCard name={shop.name} image={shop.image} key={index} onClick={()=>navigate(`/shop/${shop._id}`)} />
+          
         )) }
        </div>
        {/*right button*/}
