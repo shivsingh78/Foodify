@@ -44,7 +44,7 @@ handleShop()
             <div className="flex items-center gap-[10px] ">
               <FaLocationDot size={22} color='red' />
 
-              <p className="text-lg font-medium text-gray-200 mt-[10px] mb-[10px] ">
+              <p className="text-lg font-medium text-gray-200 mt-[10px] md:mb-[15px]  ">
                 {shop.address}
               </p>
             </div>

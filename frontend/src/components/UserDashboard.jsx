@@ -52,6 +52,9 @@ if(element){
     }
   }
 
+  
+ 
+
   useEffect(() => {
   const element = cateScrollRef.current ;
   const elementShop = shopScrollRef.current;

@@ -151,4 +151,40 @@ export const getItemsByShop = async (req,res) => {
      
 }
 
+export const searchItems = async (req,res) => {
+     try {
+          const {query,city} = req.query
+          
+          
+          if(!query || !city){
+               return res.status(400).json({message:"Both query and city is required "})
+          }
+          const shops = await Shop.find({
+               city:{$regex:new RegExp(`^${city}$`,"i")}
+          }).populate('items')
+          if(!shops.length){
+               return res.status(404).json({message:"No shop found in this city."})
+          }
+
+          const shopIds = shops.map(s=>s._id)
+          const items = await Item.find({
+               shop:{$in:shopIds},
+               $or:[
+                    {name:{$regex:query,$options:"i"}},
+                    {category:{$regex:query,$options:"i"}}
+               ]
+          }).populate("shop","name image")
+          if(!items.length){
+               return res.status(404).json({message:"No matching items found"})
+          }
+
+          return res.status(200).json(items)
+     } catch (error) {
+          console.log(error);
+          return res.status(500).json({message: 'Server error during item search'})
+          
+          
+     }
+}
+
 
