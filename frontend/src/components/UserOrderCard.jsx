@@ -18,8 +18,9 @@ function UserOrderCard({data}) {
                <p className='font-semibold '>order #{data._id.slice(-6)} </p>
                <p className='text-sm text-gray-500 '>Date: {formateDate(data.createdAt)} </p>
           </div>
-          <div className="">
-               <p className='text-sm text-gray-500 '> {data.paymentMethod.toUpperCase()} </p>
+          <div className="text-right">
+               {data.paymentMethod === "cod" ? (<p className='text-sm text-gray-500 font-semibold '>  {data.paymentMethod.toUpperCase()} </p>):(<p className='text-sm text-gray-500 '>Payment: {data.payment?"true":"false"} </p>)}
+
                <p className='font-medium text-blue-600'>{data.shopOrders?.[0].status} </p>
           </div>
      </div>

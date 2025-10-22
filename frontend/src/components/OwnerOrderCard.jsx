@@ -32,9 +32,11 @@ function OwnerOrderCard({data}) {
   return (
     <div className='bg-white rounded-lg shadow p-4 space-y-4 '>
       <div>
-        <p className='text-lg font-semibold text-gray-800 '>{data.user.fullName} </p>
+        <h2 className='text-lg font-semibold text-gray-800 '>{data.user.fullName} </h2>
         <p className='text-sm text-gray-500 '>{data.user.email} </p>
         <p className='flex items-center gap-2 text-sm text-gray-600 '><MdPhone /> <span>{data.user.mobile}</span> </p>
+        {data.paymentMethod === "online"? (<p className='gap-2 text-sm text-gray-600 '>payment: <span className='text-orange-900'>{data.payment?"true":"false"}</span> </p> ):(<p >Payment Method: <span className='text-blue-900'>  {data.paymentMethod}</span> </p>)}
+        
       </div>
 
       <div className="flex items-start flex-col gap-2 text-gray-600 ">
