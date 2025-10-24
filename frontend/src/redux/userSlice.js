@@ -95,10 +95,6 @@ const userSlice = createSlice({
                 
                if(order){
                     const shopOrder = order.shopOrders.find(so => so._id=== shopId)
-                    
-                    
-                    
-                     
                     if(shopOrder){
                          shopOrder.status=status
                     }

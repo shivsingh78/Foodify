@@ -72,7 +72,7 @@ function OwnerOrderCard({data}) {
         <div className='mt-3 p-2 border rounded-lg text-sm bg-orange-50 '>
           {data.shopOrders.assignedDeliveryBoy?(<p>Assigned Delivery Boys: </p>):(<p>Available Delivery Boys: </p>)  }
           
-          {availableBoys.length>0?(
+          {availableBoys?.length>0?(
             availableBoys.map((b,index)=>(
               <div>{b.fullName} , {b.mobile} </div>
             ))
