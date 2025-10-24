@@ -13,7 +13,8 @@ const userSlice = createSlice({
           cartItems:[],
           totalAmount:0,
           myOrders:[],
-          searchItems:null
+          searchItems:null,
+          socket:null,
      },
      reducers:{
           setUserData:(state,action) =>{
@@ -74,19 +75,47 @@ const userSlice = createSlice({
                const {orderId,shopId,status}=action.payload;
                const order = state.myOrders.find(o=>o._id == orderId)
                if(order){
+                   
+                    
                     if(order.shopOrders && order.shopOrders.shop._id == shopId){
                          order.shopOrders.status=status;
                     }
                }
 
            },
+           updateRealtimeOrderStatus:(state,action)=>{
+               const {orderId,shopId,status}=action.payload
+               
+               
+             
+               
+               const order = state.myOrders.find(o=>o._id == orderId)
+              
+               
+                
+               if(order){
+                    const shopOrder = order.shopOrders.find(so => so._id=== shopId)
+                    
+                    
+                    
+                     
+                    if(shopOrder){
+                         shopOrder.status=status
+                    }
+               }
+           }
+           
+           ,
            setSearchItems:(state,action)=>{
                state.searchItems=action.payload
+           },
+           setSocket:(state,action)=>{
+               state.socket=action.payload
            }
 
      }
      
 })
 
-export const {setUserData,setCurrentCity,setCurrentAddress,setCurrentState,setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders,addMyOrder,updateOrderStatus,setSearchItems} = userSlice.actions
+export const {setUserData,setCurrentCity,setCurrentAddress,setCurrentState,setShopsInMyCity,setItemsInMyCity,addToCart,updateQuantity,removeCartItem,setMyOrders,addMyOrder,updateOrderStatus,setSearchItems,setSocket,updateRealtimeOrderStatus} = userSlice.actions
 export default userSlice.reducer

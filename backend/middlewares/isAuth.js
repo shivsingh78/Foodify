@@ -10,7 +10,7 @@ export const isAuth = async (req,res,next) => {
           if(!decodedToken){
                return res.status(400).json({message:"token not verify"});
           }
-          console.log(decodedToken)
+          
           req.userId=decodedToken.userId
           next()
           

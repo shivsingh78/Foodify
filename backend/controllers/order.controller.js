@@ -105,7 +105,32 @@ export const placeOrder = async (req,res) => {
 
           // Populate referenced fields for detailed response 
           await newOrder.populate("shopOrders.shopOrderItems.item","name image price")
-          await newOrder.populate("shopOrders.shop","name")
+          await newOrder.populate("shopOrders.shop","name socketId")
+          await newOrder.populate("shopOrders.owner", "socketId  name");
+
+          await newOrder.populate("user","name email mobile")
+
+          const io=req.app.get('io')
+
+          if(io){
+               newOrder.shopOrders.forEach(shopOrder => {
+                    const ownerSocketId = shopOrder.owner.socketId 
+                    if(ownerSocketId){
+                         io.to(ownerSocketId).emit('newOrder',{
+     _id:newOrder._id,
+     paymentMethod:newOrder.paymentMethod,
+     user: newOrder.user,
+     shopOrders: shopOrder,
+     createdAt: newOrder.createdAt,
+     deliveryAddress: newOrder.deliveryAddress,
+     payment: newOrder.payment
+})
+                    }
+                    
+               });
+          }
+
+          //implement socket io for real time commnunication 
 
           // Send created order back to client 
           return res.status(201).json(newOrder)
@@ -142,6 +167,32 @@ export const verifyPayment = async (req,res)=> {
 
           await order.populate("shopOrders.shopOrderItems.item","name image price")
           await order.populate("shopOrders.shop","name")
+          await order.populate("shopOrders.owner","socketId name ")
+          await order.populate("user","name email mobile")
+
+          const io = req.app.get('io')
+
+         if(io){
+           order.shopOrders.forEach(shopOrder => {
+               const ownerSocketId = shopOrder.owner.socketId
+               if(ownerSocketId){
+                    io.to(ownerSocketId).emit('newOrder', {
+                         _id: order._id,
+                         paymentMethod: order.paymentMethod,
+                         user:order.user,
+                         shopOrders: shopOrder,
+                         createdAt:order.createdAt,
+                         deliveryAddress: order.deliveryAddress,
+                         payment:order.payment
+                    })
+               }
+               
+          });
+         }
+
+
+
+
           return res.status(200).json(order)
      } catch (error) {
           console.log(error);
@@ -296,9 +347,34 @@ export const updateOrderStatus = async (req,res) => {
           await order.save()
           //Find updated shop order again after save
            const updatedShopOrder = order.shopOrders.find(o=>o.shop==shopId)
+          
+           
 
           await order.populate("shopOrders.shop","name")
           await order.populate("shopOrders.assignedDeliveryBoy","fullName email mobile")
+          await order.populate("user","socketId")
+
+         
+
+        
+
+          //Implement socketIO for real time check user Order status
+          const io=req.app.get('io')
+          if(io){
+               const userSocketId = order.user.socketId
+               if(userSocketId){
+                    io.to(userSocketId).emit('update-status',{
+                         orderId:order._id,
+                         shopId:updatedShopOrder._id,
+                         status:updatedShopOrder.status,
+                         userId:order.user._id
+
+                    })
+               }
+
+          }
+
+
 
          
           //✅ Send response with updated data
@@ -306,7 +382,7 @@ export const updateOrderStatus = async (req,res) => {
                shopOrder:updatedShopOrder,
                assignedDeliveryBoy:updatedShopOrder?.assignedDeliveryBoy,
                availableBoys:deliveryBoysPayload,
-               assignment:updatedShopOrder?.assignment._id,
+               assignment:updatedShopOrder?.assignment?._id,
           })
      } catch (error) {
           console.log(error);
