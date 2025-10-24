@@ -4,11 +4,16 @@ import { IoIosArrowRoundBack } from "react-icons/io";
 import { useNavigate, useParams } from 'react-router-dom'
 import { serverUrl } from '../App'
 import DeliveryBoyTracking from '../components/DeliveryBoyTracking';
+import { useSelector } from 'react-redux';
 
 function TrackOrderPage() {
      const {orderId}=useParams()
      const [currentOrder,setCurrentOrder]=useState()
+     const {socket}=useSelector(state=>state.user)
      const navigate = useNavigate()
+     const [liveLocations,setLiveLocations]=useState({})
+
+
      const handleGetOrder = async () => {
           try {
                const result = await axios.get(`${serverUrl}/api/order/get-order-by-id/${orderId}`,{withCredentials:true})
@@ -20,6 +25,17 @@ function TrackOrderPage() {
                
           }
      }
+     useEffect(()=>{
+          socket.on('updateDeliveryLocation',({deliveryBoyId,latitude,longitude})=>{
+               setLiveLocations(prev => ({
+                    ...prev,[deliveryBoyId]:{lat:latitude,lon:longitude}
+               }))
+
+          })
+
+     },[socket])
+
+
      useEffect(()=>{
           handleGetOrder()
      },[orderId])
@@ -60,17 +76,17 @@ function TrackOrderPage() {
                     </>: <p className='text-green-600 font-semibold text-lg '>Delivered</p>}
                     {(shopOrder.assignedDeliveryBoy && shopOrder.status !== "delivered") &&
                     (<div className="h-[400px] w-full rounded-2xl overflow-hidden shadow-md  ">
-                         <DeliveryBoyTracking data={{
-                         deliveryBoyLocation:{
-                              lat:shopOrder.assignedDeliveryBoy.location.coordinates[1],
-                              
-                              lon:shopOrder.assignedDeliveryBoy.location.coordinates[0]
-                         },
-                         customerLocation:{
-                              lat:currentOrder.deliveryAddress.latitude,
+               <DeliveryBoyTracking data={{
 
-                              lon:currentOrder.deliveryAddress.longitude
-                         }
+           deliveryBoyLocation:liveLocations[shopOrder.assignedDeliveryBoy._id] || {
+          lat:shopOrder.assignedDeliveryBoy.location.coordinates[1],
+          
+          lon:shopOrder.assignedDeliveryBoy.location.coordinates[0]
+     },
+               customerLocation:{
+               lat:currentOrder.deliveryAddress.latitude,
+               lon:currentOrder.deliveryAddress.longitude
+          }
                     }} />
                     </div>) }
                </div>
