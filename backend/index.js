@@ -20,7 +20,7 @@ const server=http.createServer(app)
 
 const io = new Server(server,{
      cors:{
-          origin:"http://localhost:5173",
+          origin:"https://foodify-w0wy.onrender.com",
           credentials:true,
           methods:['POST','GET']
      }
@@ -38,7 +38,7 @@ if(process.env.NODE_ENV === "development") {
      app.use(morgan("dev"))
 }
 app.use(cors({
-     origin: process.env.CLIENT_URL,
+     origin: "https://foodify-w0wy.onrender.com",
      credentials:true,
 }))
 app.use(express.json())
