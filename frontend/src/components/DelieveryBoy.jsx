@@ -6,6 +6,7 @@ import { serverUrl } from '../App'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import DeliveryBoyTracking from './DeliveryBoyTracking'
+import { BarChart, CartesianGrid, ResponsiveContainer } from 'recharts'
 
 
 function DelieveryBoy() {
@@ -15,6 +16,7 @@ function DelieveryBoy() {
   const [showOtpBox,setShowOtpBox]=useState(false)
   const [otp,setOtp]=useState("")
   const [deliveryBoyLocation,setDeliveryBoyLocation] =useState(null)
+  const [todayDeliveries,setTodayDeliveries]=useState([])
  
   
 
@@ -39,14 +41,19 @@ function DelieveryBoy() {
   const getCurrentOrder = async () => {
     try {
       const result = await axios.get(`${serverUrl}/api/order/get-current-order`,{withCredentials:true})
+   
+      
       setCurrentOrder(result.data)
-      console.log(result.data);
+  
       
       
       
     } catch (error) {
-      console.log(error);
-      
+     if (error.response && error.response.status === 404) {
+      // No current order — this is normal
+      setCurrentOrder(null);
+      return;
+    }'console.error("Unexpected error fetching current order:", error);'
       
     }
   }
@@ -93,6 +100,21 @@ function DelieveryBoy() {
     }
     
   }
+  const handleTodayDeliveries = async () => {
+    try {
+      const result = await axios.get(`${serverUrl}/api/order/get-today-deliveries`,{withCredentials:true})
+      
+      setTodayDeliveries(result.data)
+      
+    } catch (error) {
+      console.log(error);
+     
+      
+    }
+  }
+
+
+
   
   useEffect(()=>{
     let watchId
@@ -143,6 +165,7 @@ function DelieveryBoy() {
   useEffect(()=>{
     getAssignments()
     getCurrentOrder()
+    handleTodayDeliveries()
     
   },[userData])
   return (
@@ -154,6 +177,19 @@ function DelieveryBoy() {
           <p className=' text-[#ff4d2d]'><span className="font-semibold ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold">Longitude </span>
           {deliveryBoyLocation?.lon}
           </p>
+        </div>
+
+       
+
+        <div className="bg-white rounded-2xl shadow-md p-5 w-[90%] mb-6 border border-orange-100  ">
+          <h1 className="text-lg font-bold mb-3 text-[#ff4d2d]  ">Today Deliveries</h1>
+          <ResponsiveContainer width="100%" height={200} >
+            <BarChart data={todayDeliveries} >
+              <CartesianGrid strokeDasharray="3 3" />
+            </BarChart>
+
+          </ResponsiveContainer>
+
         </div>
 
        {!currentOrder &&  <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border  border-orange-100">
