@@ -6,7 +6,8 @@ import { serverUrl } from '../App'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import DeliveryBoyTracking from './DeliveryBoyTracking'
-import { BarChart, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import ClipLoader from 'react-spinners/ClipLoader'
 
 
 function DelieveryBoy() {
@@ -17,6 +18,8 @@ function DelieveryBoy() {
   const [otp,setOtp]=useState("")
   const [deliveryBoyLocation,setDeliveryBoyLocation] =useState(null)
   const [todayDeliveries,setTodayDeliveries]=useState([])
+  const [loading,setLoading]=useState(false)
+  const [message,setMessage]=useState('')
  
   
 
@@ -73,24 +76,30 @@ function DelieveryBoy() {
   }
 
   const sendOtp = async ()=> {
+    setLoading(true)
 
     try{
       const result = await axios.post(`${serverUrl}/api/order/send-delivery-otp`,{orderId:currentOrder._id ,shopOrderId:currentOrder.shopOrder._id},{withCredentials:true})
+      setLoading(false)
        setShowOtpBox(true)
       console.log(result.data);                    
 
       
 
     } catch(error){
+      setLoading(false)
       console.log(error)
     }
 
   }
 
   const verifyOtp = async () => {
+    setMessage("")
     try {
       const result = await axios.post(`${serverUrl}/api/order/verify-delivery-otp`,{orderId:currentOrder._id,shopOrderId:currentOrder.shopOrder._id,otp},{withCredentials:true})
       console.log(result.data);
+      setMessage(result.data.message)
+      location.reload()
       
       
     } catch (error) {
@@ -112,6 +121,11 @@ function DelieveryBoy() {
       
     }
   }
+
+  const ratePerDelivery = 50
+  const totalEarning = todayDeliveries.reduce((sum,d)=> sum + d.count*ratePerDelivery,0)
+
+
 
 
 
@@ -174,7 +188,7 @@ function DelieveryBoy() {
       <div className="w-full max-w-[800px] flex flex-col gap-5 items-center ">
         <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-orange-100 text-center gap-2">
           <h1 className="text-xl font-bold text-[#ff4d2d] ">Welcome, {userData.fullName }</h1>
-          <p className=' text-[#ff4d2d]'><span className="font-semibold ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold">Longitude </span>
+          <p className=' text-[#36302f]'><span className="font-semibold text-[#ff4d2d] ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold text-[#ff4d2d]">Longitude </span>
           {deliveryBoyLocation?.lon}
           </p>
         </div>
@@ -186,9 +200,20 @@ function DelieveryBoy() {
           <ResponsiveContainer width="100%" height={200} >
             <BarChart data={todayDeliveries} >
               <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" tickFormatter={(h)=>`${h}:00`} />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={(value=>[value,"orders"])} labelFormatter={label=>`${label}:00`} />
+                  <Bar dataKey="count" fill='#ff4d2d' />
+
             </BarChart>
 
           </ResponsiveContainer>
+
+          <div className="max-w-sm mx-auto mt-6 p-6 bg-white rounded-2xl shadow-lg text-center ">
+            <h1 className="text-xl font-semibold text-gray-800 mb-2  ">Today's Earning </h1>
+            <span className="text-3xl font-bold text-green-600  ">₹{totalEarning} </span>
+          </div>
+          
 
         </div>
 
@@ -239,13 +264,15 @@ function DelieveryBoy() {
             }
           }/>
 
-          {!showOtpBox ? (<button className='mt-4 w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition-all duration-200 cursor-pointer' onClick={sendOtp}>
-            Mark As Delivered
+          {!showOtpBox ? (<button className='mt-4 w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition-all duration-200 cursor-pointer' onClick={sendOtp} disabled={loading}>
+           {loading ? <ClipLoader size={20} color='white' /> : "Mark As Delivered"}
           </button>)
           :
           (<div className='t-4 p-4 border rounded-xl bg-gray-50 '>
             <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-orange-500 '>{currentOrder.user.fullName}</span> </p>
             <input type="text" className='w-full  border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400 ' placeholder='Enter OTP'  onChange={(e)=>setOtp(e.target.value)} value={otp}/>
+
+            {message && <p className='text-center text-green-400 ' >{message} </p> }
            
             <button className='w-full bg-orange-500 text-white py-2 rounded-lg font-semibold hover:bg-orange-600 transition-all cursor-pointer' onClick={verifyOtp}>Submit OTP </button>
             
