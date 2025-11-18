@@ -23,7 +23,7 @@ import TrackOrderPage from './pages/TrackOrderPage';
 import Shop from './pages/Shop';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
-export const serverUrl="http://localhost:8000";
+export const serverUrl= import.meta.env.VITE_API_URL;
 
 function App() {
   const {userData} = useSelector(state=>state.user)
