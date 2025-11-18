@@ -38,7 +38,7 @@ if(process.env.NODE_ENV === "development") {
      app.use(morgan("dev"))
 }
 app.use(cors({
-     origin: process.env.CLIENT_URL,
+     origin: process.env.FRONTEND_URL,
      credentials:true,
 }))
 app.use(express.json())
