@@ -29,7 +29,7 @@ function App() {
   const {userData} = useSelector(state=>state.user)
   const dispatch = useDispatch()
   useGetMyShop()
-  useGetShopByCity()
+  useGetShopByCity() 
   useGetItemsByCity()
   useGetCurrentUser()
   useUpdateLocation()
