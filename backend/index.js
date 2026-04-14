@@ -56,8 +56,9 @@ socketHandler(io)
 //check db to be connected
 
 const startServer = async () => {
-     try {
-          await connectDb();
+     try{
+     await connectDb();
+     
           server.listen(port, () => {
                console.log(`✅ Server started at: ${port}`);
                
@@ -65,7 +66,7 @@ const startServer = async () => {
      } catch (error) {
            console.error("❌ Failed to connect to DB", error);
     process.exit(1); // Exit if DB fails
-     }
+     } 
 }
 
 startServer()
