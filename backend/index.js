@@ -18,9 +18,18 @@ import { socketHandler } from './socket.js';
 const app = express()
 const server=http.createServer(app)
 
+// Handle CORS origins for development and production
+const allowedOrigins = [
+     process.env.FRONTEND_URL,
+     'http://localhost:3000',
+     'http://localhost:5173',
+     'http://127.0.0.1:3000',
+     'http://127.0.0.1:5173'
+].filter(Boolean);
+
 const io = new Server(server,{
      cors:{
-          origin:process.env.FRONTEND_URL,
+          origin: allowedOrigins,
           credentials:true,
           methods:['POST','GET']
      }
@@ -37,10 +46,21 @@ app.use(helmet())
 if(process.env.NODE_ENV === "development") {
      app.use(morgan("dev"))
 }
+
+// CORS configuration with proper origin handling
 app.use(cors({
-     origin: process.env.FRONTEND_URL,
-     credentials:true,
+     origin: function(origin, callback) {
+          if (!origin || allowedOrigins.includes(origin)) {
+               callback(null, true)
+          } else {
+               callback(new Error('Not allowed by CORS'))
+          }
+     },
+     credentials: true,
+     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+     allowedHeaders: ['Content-Type', 'Authorization']
 }))
+
 app.use(express.json())
 app.use(cookieParser())
 app.use("/api/auth",authRouter)
@@ -60,15 +80,14 @@ const startServer = async () => {
           await connectDb();
           server.listen(port, () => {
                console.log(`✅ Server started at: ${port}`);
+               console.log(`✅ Allowed origins: ${allowedOrigins.join(', ')}`);
                
           })
      } catch (error) {
-           console.error("❌ Failed to connect to DB", error);
-    process.exit(1); // Exit if DB fails
+            console.error("❌ Failed to connect to DB", error);
+     process.exit(1); // Exit if DB fails
      }
 }
 
 startServer()
-
-
 
