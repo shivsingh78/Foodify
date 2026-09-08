@@ -8,15 +8,15 @@ export const isAuth = async (req,res,next) => {
           }
           const decodedToken = jwt.verify(token,process.env.JWT_SECRET)
           if(!decodedToken){
-               return res.status(400).json({message:"token not verify"});
+               return res.status(401).json({message:"Invalid or expired token"});
           }
           
           req.userId=decodedToken.userId
           next()
           
      } catch (error) {
-          return res.status(500).json({message:" Authentication failed",});
-
+          console.error("Auth error:", error.message);
+          return res.status(401).json({message:"Authentication failed"});
           
      }
      
