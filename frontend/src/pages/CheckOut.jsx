@@ -16,10 +16,14 @@ import { serverUrl } from '../App';
 import { addMyOrder } from '../redux/userSlice';
 
 function RecenterMap({location}){
-  if(location.lat && location.lon){
-    const map=useMap()
+  const map=useMap()
+
+  useEffect(()=>{
+    if(location.lat != null && location.lon != null){
     map.setView([location.lat,location.lon],17,{animate:true})
-  }
+    }
+  },[location.lat,location.lon,map])
+
   return null
 }
 
@@ -28,7 +32,7 @@ function CheckOut() {
   const [addressInput,setAddressInput]=useState('')
   const [paymentMethod,setPaymentMethod]= useState('cod')
   const {location,address}=useSelector(state=>state.map)
-  const {cartItems,totalAmount,userData}=useSelector(state=>state.user)
+  const {cartItems,totalAmount}=useSelector(state=>state.user)
   const dispatch=useDispatch()
    const apiKey=import.meta.env.VITE_GEOAPIKEY
 
@@ -36,7 +40,7 @@ function CheckOut() {
 
    const amountWithDeliveryFee=totalAmount+deliveryFee;
 
-   const center = location.lat && location.lon ? [location.lat,location.lon]: [20.5937, 78.9629]; // default India
+   const center = location.lat != null && location.lon != null ? [location.lat,location.lon]: [20.5937, 78.9629]; // default India
   
 
   const onDragEnd=(e)=>{
@@ -48,16 +52,24 @@ function CheckOut() {
     
   }
   const getCurrentLocation=()=>{
-   
-              const latitude = userData.location.coordinates[1]
-    const longitude = userData.location.coordinates[0]
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.")
+      return
+    }
 
-              dispatch(setLocation({lat:latitude,lon:longitude}))
-              getAddressByLatLng(latitude,longitude)
-             
-      
-
-             
+    navigator.geolocation.getCurrentPosition(
+      ({coords})=>{
+        const latitude = coords.latitude
+        const longitude = coords.longitude
+        dispatch(setLocation({lat:latitude,lon:longitude}))
+        getAddressByLatLng(latitude,longitude)
+      },
+      (error)=>{
+        console.error("Unable to get current location", error)
+        alert("Unable to get your current location. Please allow location access and try again.")
+      },
+      {enableHighAccuracy:true, maximumAge:0, timeout:10000}
+    )
   }
 
   const getAddressByLatLng=async(lat,lng)=>{
@@ -78,7 +90,8 @@ function CheckOut() {
   const getLatLngAddress=async ()=>{
     try{
        const result = await axios.get(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(addressInput)}&apiKey=${apiKey}`)
-      const {lat,lon}= result?.data.features[0].properties
+      const {lat,lon}= result?.data?.features?.[0]?.properties || {}
+      if (lat == null || lon == null) return
       dispatch(setLocation({lat,lon}))
 
     } catch(error){

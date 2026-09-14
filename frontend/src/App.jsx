@@ -23,10 +23,12 @@ import TrackOrderPage from './pages/TrackOrderPage';
 import Shop from './pages/Shop';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
+
 export const serverUrl= import.meta.env.VITE_API_URL;
 
 function App() {
-  const {userData} = useSelector(state=>state.user)
+  const {userData,authLoading} = useSelector(state=>state.user);
+  
   const dispatch = useDispatch()
   useGetMyShop()
   useGetShopByCity() 
@@ -51,6 +53,12 @@ function App() {
 
   }
   },[userData?._id])
+
+  if(authLoading)  return (
+    <div className="flex h-screen w-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+    </div>
+  );
 
   return (
    <Routes>

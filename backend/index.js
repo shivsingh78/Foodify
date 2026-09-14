@@ -1,6 +1,6 @@
-import express from 'express'
-import dotenv from 'dotenv'
-dotenv.config()
+import dotenv from 'dotenv';
+dotenv.config(); 
+import express from 'express';
 import connectDb from './config/db.js';
 import cors from 'cors'
 import authRouter from './routes/auth.routes.js';

@@ -21,7 +21,7 @@
     "mongoose": "^8.18.1",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.6",
+    "nodemailer": "^10.0.9",
     "nodemon": "^3.1.10",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.1"
