@@ -6,7 +6,7 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCLzagt7bzwi_SPu8hH0vF5EiC0YtkqYaY",
+  apiKey: import.meta.env.VITE_FIREBASE_APIKEY,
   authDomain: "foodify-7cd3e.firebaseapp.com",
   projectId: "foodify-7cd3e",
   storageBucket: "foodify-7cd3e.firebasestorage.app",
