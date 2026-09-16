@@ -55,7 +55,7 @@ function SignUp() {
       const provider = new GoogleAuthProvider()
       const result = await signInWithPopup(auth, provider)
 
-      const { data } = await axios.post(`${serverUrl}/api/auth/google-auth`, {
+      const { data } = await axios.post(`${serverUrl}/api/auth/google-signup`, {
         fullName: result.user.displayName,
         email: result.user.email,
         role,
@@ -65,9 +65,7 @@ function SignUp() {
       
 
     } catch (error) {
-      console.log(error);
-
-
+      setErr(error?.response?.data?.message || error.message)
     }
 
   }

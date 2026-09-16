@@ -10,6 +10,8 @@ import { setSearchItems, setUserData } from '../redux/userSlice';
 import { FaPlus } from "react-icons/fa6";
 import { TbReceipt2 } from "react-icons/tb";
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 
 function Nav() {
@@ -24,6 +26,7 @@ function Nav() {
      const handleLogout = async () => {
           try {
                 await axios.get(`${serverUrl}/api/auth/signout`,{withCredentials:true})
+                await signOut(auth);
                dispatch(setUserData(null))
           } catch(error){
                console.log(error);

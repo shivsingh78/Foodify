@@ -206,45 +206,73 @@ export const resetPassword=async (req,res)=> {
      }
 }
 
-//authenticate with google
+const setAuthCookie = (res, token) => {
+     res.cookie("token", token, {
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+     });
+}
 
-export const googleAuth = async (req,res) => {
+const sendGoogleAuthResponse = async (res, user) => {
+     const token = await genToken(user._id);
+     setAuthCookie(res, token);
+
+     const userResponse = user.toObject();
+     delete userResponse.password;
+     return res.status(200).json(userResponse);
+}
+
+// Creates an application account after Firebase has completed Google sign-in.
+export const googleSignUp = async (req,res) => {
      try {
           const {fullName,email,mobile,role}=req.body;
           
+          if(!fullName || !email || !mobile || !role) {
+               return res.status(400).json({message: "Full name, email, mobile, and role are required"});
+          }
+
+          const normalizedEmail = email.trim().toLowerCase();
+          const existingUser = await User.findOne({email: normalizedEmail});
+          if(existingUser) {
+               return res.status(409).json({message: "Account already exists. Please sign in."});
+          }
+
+          const user = await User.create({
+               fullName,
+               email: normalizedEmail,
+               mobile,
+               role
+          });
+
+          return sendGoogleAuthResponse(res, user);
+
+     } catch (error) {
+          console.error("Google sign-up error:", error);
+          return res.status(500).json({message:`Google sign-up error: ${error.message}`})
+     }
+}
+
+// Starts an application session only for an existing application account.
+export const googleSignIn = async (req,res) => {
+     try {
+          const {email} = req.body;
+
           if(!email) {
                return res.status(400).json({message: "Email is required"});
           }
 
-          let user=await User.findOne({email:email.trim().toLowerCase()})
-          if(!user){
-               user=await User.create({
-                    fullName,
-                    email:email.trim().toLowerCase(),
-                    mobile,
-                    role
-               })
+          const user = await User.findOne({email: email.trim().toLowerCase()});
+          if(!user) {
+               return res.status(404).json({message: "Account not found. Please sign up first."});
           }
 
-          const token = await genToken(user._id); 
-
-          // set cookie
-          res.cookie("token",token,{
-               secure: process.env.NODE_ENV === "production",
-               sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-               maxAge: 7*24*60*60*1000, //7days
-               httpOnly: true,
-          });
-          // remove password before sending response
-          const userResponse= user.toObject()
-          delete userResponse.password;
-           return res.status(200).json(userResponse)
+          return sendGoogleAuthResponse(res, user);
 
      } catch (error) {
-          console.error("GoogleAuth error:", error);
-            return res.status(500).json({message:`google Auth error: ${error.message}`})
+          console.error("Google sign-in error:", error);
+          return res.status(500).json({message:`Google sign-in error: ${error.message}`})
           
      }
-     
 }
-
