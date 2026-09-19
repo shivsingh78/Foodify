@@ -1,0 +1,8 @@
+packages:
+  - "frontend"
+  - "backend"
+  - "packages/*"
+allowBuilds:
+  '@firebase/util': false
+  esbuild: false
+  protobufjs: false

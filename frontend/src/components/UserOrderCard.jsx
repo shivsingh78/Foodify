@@ -2,7 +2,7 @@ import axios from 'axios'
 import React, { useState } from 'react'
 import { TbLetterYSmall } from 'react-icons/tb'
 import { useNavigate } from 'react-router-dom'
-import { serverUrl } from '../App'
+import { serverUrl } from '../config'
 
 function UserOrderCard({data}) {
      const navigate = useNavigate()

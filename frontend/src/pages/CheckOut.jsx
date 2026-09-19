@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import "leaflet/dist/leaflet.css"
 import { setAddress, setLocation } from '../redux/mapSlice';
 import axios from 'axios';
-import { serverUrl } from '../App';
+import { serverUrl } from '../config';
 import { addMyOrder } from '../redux/userSlice';
 
 function RecenterMap({location}){

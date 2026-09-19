@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
 import axios from 'axios'
-import {serverUrl} from '../App'
+import {serverUrl} from '../config'
 import { FaStore,FaLocationDot  } from "react-icons/fa6";
 import { FaUtensils } from "react-icons/fa";
 import FoodCard from '../components/FoodCard';

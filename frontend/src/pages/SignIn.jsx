@@ -5,9 +5,8 @@ import { FcGoogle } from "react-icons/fc";
 import ClipLoader from 'react-spinners/ClipLoader';
 import {useNavigate} from 'react-router-dom'
 import axios from 'axios'
-import { serverUrl } from '../App';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { serverUrl } from '../config';
+import { signInWithGoogle } from '../utils/googleAuth';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice';
 function SignIn() {
@@ -20,6 +19,7 @@ function SignIn() {
      const [email,setEmail]=useState("")
      const [password,setPassword]=useState("")
      const [err,setErr]=useState("")
+    const [googleLoading,setGoogleLoading]=useState(false)
      const dispatch = useDispatch()
 
      const handleSignIn= async()=>{
@@ -42,9 +42,11 @@ function SignIn() {
      }
 
       const handleGoogleAuth = async () => {
+        if (googleLoading) return
+        setGoogleLoading(true)
          try {
-           const provider = new GoogleAuthProvider()
-           const result = await signInWithPopup(auth,provider)
+           const result = await signInWithGoogle()
+           if (!result) return
             
            const {data} = await axios.post(`${serverUrl}/api/auth/google-signin`,{
              email:result.user.email,
@@ -52,7 +54,13 @@ function SignIn() {
          dispatch(setUserData(data))
      
          } catch (error) {
-           setErr(error?.response?.data?.message || error.message)
+           setErr(error?.response?.data?.message || (
+             error.code === "auth/popup-blocked"
+               ? "Your browser blocked the Google window. Allow popups for this site and try again."
+               : error.message
+           ))
+         } finally {
+           setGoogleLoading(false)
          }
      
        }
@@ -91,9 +99,9 @@ function SignIn() {
            {err && <p className='text-red-500 text-center my-[10px] '>*{err}</p>
 }
 
-          <button className='w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-100 cursor-pointer ' onClick={handleGoogleAuth}>
+          <button className='w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-100 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ' onClick={handleGoogleAuth} disabled={googleLoading}>
             <FcGoogle size={20}/>
-                    <span>Sign in with Google </span>
+                    <span>{googleLoading ? "Signing in..." : "Sign in with Google"}</span>
                   </button>
 
                   <p className="text-center mt-6">

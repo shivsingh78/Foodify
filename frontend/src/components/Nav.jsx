@@ -4,7 +4,7 @@ import { IoSearchSharp } from "react-icons/io5";
 import { FiShoppingCart } from "react-icons/fi";
 import { RxCross2 } from "react-icons/rx";
 import { useDispatch, useSelector } from "react-redux";
-import { serverUrl } from '../App';
+import { serverUrl } from '../config';
 import axios from 'axios';
 import { setSearchItems, setUserData } from '../redux/userSlice';
 import { FaPlus } from "react-icons/fa6";

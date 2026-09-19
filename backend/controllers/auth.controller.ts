@@ -1,27 +1,45 @@
-import User from "../models/user.model.js";
+import User, { IUser, UserDocument } from "../models/user.model.js";
 import bcrypt from 'bcryptjs'
 import genToken from "../utils/token.js";
 import { sendOtpMail } from "../utils/mail.js";
+import type { Request, Response } from "express";
+import { signUpSchema } from "@foodify/validation";
 
+
+const getErrorMessage = (error:unknown): string =>{
+     if(error instanceof Error) {
+          return error.message;
+     }
+     return String(error);
+}
+
+const isMongoDuplicateKeyError = (error:unknown):boolean =>{
+     return (
+          typeof error === "object" && 
+          error !==null && "code" in error && error.code ===11000
+     )
+}
 
 //signup controller
-export const signUp = async (req,res) => {
+export const signUp = async (req:Request,res:Response) => {
      try {
-          const {fullName,email,password,mobile,role} = req.body;
+
+          const result = signUpSchema.safeParse(req.body);
+
+          if(!result.success){
+               return res.status(400).json({
+                    message:"Invalid signup data",
+                    errors: result.error.issues,
+               })
+          }
+          const {fullName,email,password,mobile}=req.body;
+
+          
           let user = await User.findOne({email})
           //check if user already exist
           if(user){
                return res.status(400).json({message:"User Already exist"})
           }
-          //check password length
-          if(password.length <6){
-               return res.status(400).json({message:"password must be at least 6 characters."})
-          }
-           //check mobile no. length
-          if(mobile.length <10){
-               return res.status(400).json({message:" mobile no. must be at least 10 digits "})
-          }
-
           //hash the password that we get from user
 
           const hashPassword = await bcrypt.hash(password,10)
@@ -31,12 +49,12 @@ export const signUp = async (req,res) => {
                 user = await User.create({
                 fullName,
                 email:email.trim().toLowerCase(),
-                role,
+                role:"user",
                 mobile,
                 password:hashPassword
            })
           } catch (error) {
-               if (error.code === 11000) {
+               if (isMongoDuplicateKeyError(error)) {
                     // Mongo duplicate key
                     return res.status(409).json({message: "Email already exists "})
                }
@@ -49,7 +67,7 @@ export const signUp = async (req,res) => {
           const token = await genToken(user._id)
           res.cookie("token",token,{
                secure:process.env.NODE_ENV === "production",
-               sameSite:process.env.NODE_ENV === "production" ? "strict" : "lax",
+               sameSite:process.env.NODE_ENV === "production" ? "none" : "lax",
                maxAge:7*24*60*60*1000,
                httpOnly:true
 
@@ -64,13 +82,13 @@ export const signUp = async (req,res) => {
 
           } catch (error) {
                 console.error("SignUp error:", error);
-                return res.status(500).json({message:`sign up error: ${error.message}`})
+                return res.status(500).json({message:`sign up error: ${getErrorMessage(error)}`})
           
      }
 }
 
 //Login controller
-export const signIn = async (req,res) => {
+export const signIn = async (req:Request,res:Response) => {
      try {
           const {email,password} = req.body;
           
@@ -87,7 +105,12 @@ export const signIn = async (req,res) => {
           }
 
           // compare password with hash
-          const isMatch = await bcrypt.compare(password, user.password);
+          if(!user.password) {
+               return res.status(401).json({
+                    message:"Invalid email or passord"
+               })
+          }
+          const isMatch =  bcrypt.compare(password, user.password);
           if (!isMatch) {
                return res.status(401).json({message: "Invalid email or password"});
           }
@@ -97,7 +120,7 @@ export const signIn = async (req,res) => {
           // set cookie
           res.cookie("token",token,{
                secure: process.env.NODE_ENV === "production",
-               sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+               sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
                maxAge: 7*24*60*60*1000, //7days
                httpOnly: true,
           });
@@ -108,25 +131,27 @@ export const signIn = async (req,res) => {
           return res.status(200).json(userResponse)
      } catch(error){
           console.error("SignIn error:", error);
-          return res.status(500).json({message:`Login error : ${error.message}`})
+          return res.status(500).json({message:`Login error : ${getErrorMessage(error)}`})
 
      }
 }
 
-export const signOut = async (req,res) => {
+export const signOut = async (req:Request,res:Response) => {
      try {
           res.clearCookie("token")
            return res.status(200).json({message:`Logout successfully`})
           
      } catch (error) {
           console.error("SignOut error:", error);
-            return res.status(500).json({message:`signOut error : ${error.message}`})
+            return res.status(500).json({message:`signOut error : ${getErrorMessage(error)
+
+            }`})
           
      }
      
 }
 //create otp for reset password
-export const sendOtp=async (req,res)=>{
+export const sendOtp=async (req:Request,res:Response)=>{
      try {
           const {email}=req.body;
           
@@ -140,7 +165,7 @@ export const sendOtp=async (req,res)=>{
           }
           const otp=Math.floor(1000 + Math.random() * 9000).toString()
           user.resetOtp=otp;
-          user.otpExpires=Date.now()+5*60*1000;
+          user.otpExpires=new Date(Date.now()+5*60*1000)
           user.isOtpVerified=false;
           await user.save()
           await sendOtpMail(email,otp)
@@ -148,12 +173,12 @@ export const sendOtp=async (req,res)=>{
           
      } catch (error) {
           console.error("SendOtp error:", error);
-            return res.status(500).json({message:`send otp error: ${error.message}`})
+            return res.status(500).json({message:`send otp error: ${getErrorMessage(error)}`})
      }
 }
 //check and verify otp
 
-export const verifyOtp = async (req,res)=>{
+export const verifyOtp = async (req:Request,res:Response)=>{
      try {
           const {email,otp}=req.body;
           
@@ -162,7 +187,8 @@ export const verifyOtp = async (req,res)=>{
           }
 
           const user=await User.findOne({email:email.trim().toLowerCase()})
-          if(!user || user.resetOtp!=otp || user.otpExpires<Date.now()){
+
+          if(!user || user.resetOtp!== otp ||  !user.otpExpires || user.otpExpires.getTime() < Date.now()){
                  return res.status(400).json({message:"Invalid/expired otp"})
           }
           user.isOtpVerified=true;
@@ -173,14 +199,14 @@ export const verifyOtp = async (req,res)=>{
           
      } catch (error) {
           console.error("VerifyOtp error:", error);
-            return res.status(500).json({message:`otp verified error: ${error.message}`})
+            return res.status(500).json({message:`otp verified error: ${getErrorMessage(error)}`})
           
      }
 }
 
 // restpassword
 
-export const resetPassword=async (req,res)=> {
+export const resetPassword=async (req:Request,res:Response)=> {
      try {
           const {email,newPassword}=req.body;
           
@@ -201,22 +227,28 @@ export const resetPassword=async (req,res)=> {
 
      } catch (error) {
           console.error("ResetPassword error:", error);
-            return res.status(500).json({message:`reset password error: ${error.message}`})
+            return res.status(500).json({message:`reset password error: ${getErrorMessage(error)}`})
           
      }
 }
 
-const setAuthCookie = (res, token) => {
+const setAuthCookie = (res:Response, token:string) => {
      res.cookie("token", token, {
           secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
           maxAge: 7 * 24 * 60 * 60 * 1000,
           httpOnly: true,
      });
 }
 
-const sendGoogleAuthResponse = async (res, user) => {
+const sendGoogleAuthResponse = async (res:Response, user:UserDocument) => {
+    
      const token = await genToken(user._id);
+      if(!token){
+          return res.status(500).json({
+               message:"Failed to genrate authentication token"
+          })
+     }
      setAuthCookie(res, token);
 
      const userResponse = user.toObject();
@@ -225,7 +257,7 @@ const sendGoogleAuthResponse = async (res, user) => {
 }
 
 // Creates an application account after Firebase has completed Google sign-in.
-export const googleSignUp = async (req,res) => {
+export const googleSignUp = async (req:Request,res:Response) => {
      try {
           const {fullName,email,mobile,role}=req.body;
           
@@ -250,12 +282,12 @@ export const googleSignUp = async (req,res) => {
 
      } catch (error) {
           console.error("Google sign-up error:", error);
-          return res.status(500).json({message:`Google sign-up error: ${error.message}`})
+          return res.status(500).json({message:`Google sign-up error: ${getErrorMessage(error)}`})
      }
 }
 
 // Starts an application session only for an existing application account.
-export const googleSignIn = async (req,res) => {
+export const googleSignIn = async (req:Request,res:Response) => {
      try {
           const {email} = req.body;
 
@@ -272,7 +304,7 @@ export const googleSignIn = async (req,res) => {
 
      } catch (error) {
           console.error("Google sign-in error:", error);
-          return res.status(500).json({message:`Google sign-in error: ${error.message}`})
+          return res.status(500).json({message:`Google sign-in error: ${getErrorMessage(error)}`})
           
      }
 }

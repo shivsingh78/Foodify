@@ -1,6 +1,6 @@
 import React from 'react'
 import { MdPhone } from "react-icons/md";
-import { serverUrl } from '../App';
+import { serverUrl } from '../config';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { updateOrderStatus } from '../redux/userSlice';

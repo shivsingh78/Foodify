@@ -2,7 +2,7 @@ import axios from 'axios'
 import React, { useEffect, useState } from 'react'
 import { IoIosArrowRoundBack } from "react-icons/io";
 import { useNavigate, useParams } from 'react-router-dom'
-import { serverUrl } from '../App'
+import { serverUrl } from '../config'
 import DeliveryBoyTracking from '../components/DeliveryBoyTracking';
 import { useSelector } from 'react-redux';
 

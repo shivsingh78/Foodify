@@ -1,7 +1,28 @@
-import mongoose from "mongoose";
+import mongoose, { HydratedDocument } from "mongoose";
 
+export interface ILocaiton {
+     type:"Point"
+     coordinates:[number,number]
+}
 
-const userSchema = new mongoose.Schema({
+export interface IUser{
+
+     fullName:string
+     email:string
+     password?:string
+     mobile:string
+     isOtpVerified?:boolean
+     otpExpires?:Date | null
+     resetOtp?:string | null
+     socketId:string
+     isOnline:boolean
+     role: "user" | "owner" | "deliveryBoy";
+     location:ILocaiton
+     
+}
+export type UserDocument = HydratedDocument<IUser>;
+
+const userSchema = new mongoose.Schema<IUser>({
      fullName: {
           type: String,
           required: true
@@ -51,6 +72,6 @@ const userSchema = new mongoose.Schema({
 userSchema.index({location:'2dsphere'})
 
 
-const User = mongoose.model("User",userSchema)
+const User = mongoose.model<IUser>("User",userSchema)
 
 export default User

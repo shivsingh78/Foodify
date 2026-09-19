@@ -23,8 +23,8 @@ import TrackOrderPage from './pages/TrackOrderPage';
 import Shop from './pages/Shop';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
+import { serverUrl } from './config';
 
-export const serverUrl= import.meta.env.VITE_API_URL;
 
 function App() {
   const {userData,authLoading} = useSelector(state=>state.user);
@@ -37,7 +37,6 @@ function App() {
   useUpdateLocation()
   useGetCity()
   useGetMyOrders()
-
 
   useEffect(()=>{
   const socketInstance = io(serverUrl,{withCredentials:true})

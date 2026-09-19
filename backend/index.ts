@@ -25,7 +25,7 @@ const allowedOrigins = [
      'http://localhost:5173',
      'http://127.0.0.1:3000',
      'http://127.0.0.1:5173'
-].filter(Boolean);
+].filter((origin):origin is string => Boolean(origin))
 
 const io = new Server(server,{
      cors:{
@@ -78,7 +78,7 @@ socketHandler(io)
 const startServer = async () => {
      try {
           await connectDb();
-          server.listen(port, () => {
+               server.listen(port, () => {
                console.log(`✅ Server started at: ${port}`);
                console.log(`✅ Allowed origins: ${allowedOrigins.join(', ')}`);
                

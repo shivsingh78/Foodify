@@ -1,20 +1,26 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_APIKEY,
-  authDomain: "foodify-7cd3e.firebaseapp.com",
-  projectId: "foodify-7cd3e",
-  storageBucket: "foodify-7cd3e.firebasestorage.app",
-  messagingSenderId: "890758037711",
-  appId: "1:890758037711:web:5ac97da8517f1a811977ba"
+  authDomain: "foodify-95238.firebaseapp.com",
+  projectId: "foodify-95238",
+  storageBucket: "foodify-95238.firebasestorage.app",
+  messagingSenderId: "943042935233",
+  appId: "1:943042935233:web:7095944b1ba6d52c215740",
+  measurementId: "G-1CW2YJ0YX3"
 };
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth=getAuth(app)
 
-export {app,auth}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const authPersistenceReady = setPersistence(
+  auth,
+  browserLocalPersistence
+);
+
+export { app, auth, authPersistenceReady };

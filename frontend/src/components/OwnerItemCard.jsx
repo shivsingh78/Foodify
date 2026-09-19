@@ -3,7 +3,7 @@ import { FaPen } from "react-icons/fa";
 import { FaTrashAlt } from "react-icons/fa";
 import {useNavigate} from 'react-router-dom'
 import axios from 'axios'
-import {serverUrl} from '../App'
+import {serverUrl} from '../config'
 import { useDispatch } from 'react-redux';
 import { setMyShopData } from '../redux/ownerSlice';
 
