@@ -39,3 +39,14 @@ export const makeOrdersRefetch = ({ fetchOrders, setOrders }) => async () => {
     // keep what is on screen; the next event or reload will retry
   }
 }
+
+/** Human-readable reason the browser could not provide a position (GeolocationPositionError codes 1-3). */
+export const describeGeoError = (error) => {
+  if (typeof window !== 'undefined' && window.isSecureContext === false) return 'Location needs a secure (https) connection. You will not receive delivery offers.'
+  switch (error?.code) {
+    case 1: return 'Location permission is blocked. Allow location for this site to receive delivery offers.'
+    case 2: return 'Your device could not determine its location. You will not receive delivery offers until it can.'
+    case 3: return 'Getting your location timed out. Retrying; offers need a recent location.'
+    default: return 'Location is unavailable. You will not receive delivery offers until it is shared.'
+  }
+}

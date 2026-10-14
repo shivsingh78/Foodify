@@ -1,5 +1,5 @@
 import { useSocket, useSocketEvent } from '../utils/socket'
-import { makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../utils/partnerEvents'
+import { describeGeoError, makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../utils/partnerEvents'
 import React from 'react'
 import Nav from './Nav'
 import { useSelector } from 'react-redux'
@@ -24,6 +24,7 @@ function DelieveryBoy() {
   const [loading,setLoading]=useState(false)
   const [message,setMessage]=useState('')
   const [pickupAlert,setPickupAlert]=useState('')
+  const [geoError,setGeoError]=useState('')
  
   
 
@@ -152,9 +153,11 @@ function DelieveryBoy() {
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         setDeliveryBoyLocation({lat:latitude,lon:longitude})
+        setGeoError('')
         heartbeat.update({latitude,longitude})
       },
-      (error)=>console.error('Unable to read location',error),
+      // Without a position the server cannot offer orders to this partner, so say so on screen.
+      (error)=>setGeoError(describeGeoError(error)),
       {enableHighAccuracy:true}
     )
     return ()=> {
@@ -202,6 +205,7 @@ function DelieveryBoy() {
     <div className='w-full min-h-screen bg-background flex flex-col items-center overflow-y-auto '>
       <Nav/>
       <div className="w-full max-w-[800px] flex flex-col gap-5 items-center ">
+        {geoError && <p role="alert" className="w-[90%] rounded-xl bg-red-50 p-3 text-center text-sm font-semibold text-red-700">{geoError}</p>}
         {pickupAlert && !!currentOrder && <p role="status" className="w-[90%] rounded-xl bg-primary-soft p-3 text-center text-sm font-semibold text-primary">{pickupAlert}</p>}
         <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-primary-soft text-center gap-2">
           <h1 className="text-xl font-bold text-primary ">Welcome, {userData.fullName }</h1>

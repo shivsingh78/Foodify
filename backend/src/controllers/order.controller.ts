@@ -1,3 +1,4 @@
+import { diagnoseDispatch, myDispatchEligibility } from "../services/dispatch/diagnosis.service.js";
 import type { Request, Response } from "express";
 import { currentUserId } from "../middlewares/auth.js";
 import { declineOffer as declineOfferService, getDispatchStatus } from "../services/dispatch/dispatch.service.js";
@@ -81,4 +82,12 @@ export const dispatchStatus = async (req: Request, res: Response) => {
   res
     .status(200)
     .json(await getDispatchStatus(currentUserId(req), role(req), String(req.params.orderId), String(req.params.shopOrderId)));
+};
+
+export const dispatchDiagnosis = async (req: Request, res: Response) => {
+  res.status(200).json(await diagnoseDispatch(currentUserId(req), role(req) === "admin" ? "admin" : "owner"));
+};
+
+export const myEligibility = async (req: Request, res: Response) => {
+  res.status(200).json(await myDispatchEligibility(currentUserId(req)));
 };

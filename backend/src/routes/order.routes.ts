@@ -13,12 +13,14 @@ import {
 import {
   acceptOrder,
   declineOffer,
+  dispatchDiagnosis,
   dispatchStatus,
   getCurrentOrder,
   getDeliveryBoyAssignment,
   getMyOrders,
   getOrderById,
   getTodayDeliveries,
+  myEligibility,
   placeOrder,
   sendDeliveryOtp,
   updateOrderStatus,
@@ -68,6 +70,9 @@ orderRouter.get(
   validate({ params: z.strictObject({ orderId: objectIdSchema, shopOrderId: objectIdSchema }) }),
   dispatchStatus,
 );
+// Read-only dispatch diagnostics from the live database: why an unassigned order has no partner yet.
+orderRouter.get("/dispatch-diagnosis", requireRole("owner", "admin"), dispatchDiagnosis);
+orderRouter.get("/my-dispatch-eligibility", requireRole("deliveryBoy"), myEligibility);
 orderRouter.get("/get-current-order", requireRole("deliveryBoy"), getCurrentOrder);
 orderRouter.post(
   "/send-delivery-otp",

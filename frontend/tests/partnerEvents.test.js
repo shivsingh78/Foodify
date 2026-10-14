@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { makeOrdersRefetch, makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../src/utils/partnerEvents.js'
+import { describeGeoError, makeOrdersRefetch, makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../src/utils/partnerEvents.js'
 
 describe('delivery dashboard reactions', () => {
   it('shows the alert and reloads the current delivery and offers as soon as the event arrives', async () => {
@@ -89,3 +89,17 @@ describe('restaurant order card', () => {
   })
 })
 
+
+describe('geolocation failures are visible', () => {
+  it('explains each browser error code', () => {
+    expect(describeGeoError({ code: 1 })).toMatch(/permission/i)
+    expect(describeGeoError({ code: 2 })).toMatch(/could not determine/i)
+    expect(describeGeoError({ code: 3 })).toMatch(/timed out/i)
+    expect(describeGeoError(undefined)).toMatch(/unavailable/i)
+  })
+  it('the dashboard renders the error instead of only logging it', () => {
+    const source = readFileSync(new URL('../src/components/DelieveryBoy.jsx', import.meta.url), 'utf8')
+    expect(source).toContain('setGeoError(describeGeoError(error))')
+    expect(source).toContain('role="alert"')
+  })
+})

@@ -33,7 +33,7 @@ const toLonLat = (lon: unknown, lat: unknown): LonLat | null => {
 };
 
 /** Pickup = the shop's location when known, otherwise the customer's address as a documented approximation. */
-const resolveGeometry = async (order: OrderDocument, shopOrder: IShopOrder) => {
+export const resolveGeometry = async (order: OrderDocument, shopOrder: IShopOrder) => {
   const shop = await Shop.findById(shopOrder.shop).select("location avgPrepMinutes name").lean();
   const dropoff = toLonLat(order.deliveryAddress.longitude, order.deliveryAddress.latitude);
   const shopPoint = shop?.location?.coordinates ? toLonLat(shop.location.coordinates[0], shop.location.coordinates[1]) : null;
@@ -633,13 +633,19 @@ export const runDispatchTick = async (cfg: DispatchConfig = defaultDispatchConfi
       try {
         await processJob(job, token, cfg);
       } catch (error) {
-        const code = error instanceof Error ? error.name : "ERROR";
-        console.error(`Dispatch job failed (${code})`);
-        // Retry later; the lease token guards against overwriting a newer owner.
-        await DispatchJob.updateOne(
+        // Classify without logging the raw message (MongoDB messages can echo document values such as coordinates).
+        const e = error as { name?: string; code?: unknown; codeName?: unknown };
+        const code = [e?.name ?? "ERROR", e?.codeName ?? e?.code].filter(Boolean).join(":");
+        const failed = await DispatchJob.findOneAndUpdate(
           { _id: job._id, status: "processing", lockedBy: token },
           { $set: { status: "queued", nextRunAt: new Date(Date.now() + cfg.retryDelayMs), lockedBy: null, lockedUntil: null, lastError: code }, $inc: { failures: 1 } },
-        );
+          { new: true },
+        ).select("failures").lean();
+        const failures = failed?.failures ?? 0;
+        // Retried every tick, so report the first failure and then every 10th.
+        if (failures <= 1 || failures % 10 === 0) {
+          console.error(JSON.stringify({ component: "dispatch", event: "job_failed", jobId: id(job._id), orderId: id(job.order), error: code, failures, hint: /NoQueryExecutionPlans|IndexNotFound|geoNear|2dsphere/i.test(`${code} ${(error as Error)?.message ?? ""}`) ? "the 2dsphere index on users.location is missing" : undefined }));
+        }
       }
     }
   };

@@ -72,6 +72,15 @@ When an owner sets an order to **preparing** (optionally with `prepMinutes`, els
 
 **Manual staging checks:** two real partners in the app with location sharing on; place and prepare an order and confirm only the closer one gets the offer; decline and confirm the other does; let one expire; accept and confirm the customer's tracking page shows an approximate arrival time; cancel while an offer is pending.
 
+### Troubleshooting: an order is never offered to a delivery partner
+
+Two read-only endpoints explain it from the live database, using the worker's own eligibility rules:
+
+- `GET /api/order/dispatch-diagnosis` (signed in as the restaurant owner, or an admin): for each live unassigned order, the dispatch job state (status, attempts, failures, `lastError`, retry timing), any live offer, whether the pickup is the shop's location or the customer's address, and how many partners are `eligible` or rejected as `offline`, `stale_location`, `too_far`, `at_capacity`, `excluded` or `has_pending_offer_for_another_order`. Admins also get per-partner results (id, distance rounded to 0.1 km, location age). It also reports whether the dispatch worker runs in this process and whether the `users.location` 2dsphere index exists.
+- `GET /api/order/my-dispatch-eligibility` (signed in as the delivery partner): whether this partner can receive offers right now, and why not.
+
+Server logs (`"component":"dispatch"`): `worker_started` / `worker_disabled`, `geo_index_missing` (partner search cannot run; usually a user document whose `location` is not a valid GeoJSON Point), `job_failed` (with error class), `no_eligible_partner` (funnel), `offer_created`, `job_exhausted`, `assigned`.
+
 ## Self-healing order orchestration
 
 Detects shop orders stuck in `preparing`, makes a few safe, bounded recovery attempts, records everything, and escalates to administrators when automatic recovery does not help. It extends the dispatch/ETA engine and reuses its ETA model, dispatch job and notification services.
