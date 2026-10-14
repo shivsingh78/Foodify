@@ -123,7 +123,7 @@ describe("dispatch diagnosis from the live database", () => {
     expect(mine.pickup).toBe("customer_address (shop has no location)");
     expect(a.body.usersLocationGeoIndex).toBe(true);
     expect(a.body.worker).toMatchObject({ enabled: true, running: false });
-    expect(a.body.rules).toMatchObject({ maxLocationAgeSeconds: 120, maxPickupDistanceKm: 5, partnerCapacity: 1 });
+    expect(a.body.rules).toMatchObject({ maxLocationAgeSeconds: 120, maxPickupDistanceKm: 10, partnerCapacity: 1 });
 
     const o = await diagnosis(w.owner.cookie);
     expect(o.body.orders).toHaveLength(1);

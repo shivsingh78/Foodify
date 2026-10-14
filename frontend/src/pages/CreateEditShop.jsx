@@ -7,6 +7,8 @@ import axios from 'axios';
 import { serverUrl } from '../config';
 import { setMyShopData } from '../redux/ownerSlice';
 import ClipLoader from 'react-spinners/ClipLoader';
+import LocationPicker from '../components/LocationPicker';
+import { shopPointFromLocation } from '../utils/shopLocation';
 
 
 
@@ -21,6 +23,9 @@ function CreateEditShop() {
   const [frontendImage,setFrontendImage]=useState(myShopData?.image || null)
   const [backendImage,setBackendImage]=useState(null)
   const [loading,setLoading]=useState(false)
+  // Pickup point for delivery partners ({ latitude, longitude }); starts from the saved shop location.
+  const [point,setPoint]=useState(shopPointFromLocation(myShopData?.location))
+  const [error,setError]=useState('')
   const dispatch=useDispatch()
   
 
@@ -31,15 +36,25 @@ function CreateEditShop() {
   
 
  }
+ const onPlace=(p)=>{
+  setPoint({latitude:p.latitude,longitude:p.longitude})
+  setError('')
+ }
  const handleSubmit=async(e)=>{
-  setLoading(true)
   e.preventDefault()
+  if(!point){
+    setError('Select the shop location on the map. Delivery partners near this point receive your orders.')
+    return
+  }
+  setLoading(true)
   try {
     const formData=new FormData()
     formData.append("name",name)
     formData.append("city",city)
     formData.append("state",state)
     formData.append("address",address)
+    formData.append("latitude",String(point.latitude))
+    formData.append("longitude",String(point.longitude))
     if(backendImage){
       formData.append("image",backendImage)
     }
@@ -51,6 +66,7 @@ function CreateEditShop() {
     
   } catch (error) {
     console.log(error);
+    setError(error?.response?.data?.message || 'Could not save the shop. Please try again.')
     setLoading(false)
     
     
@@ -99,6 +115,12 @@ function CreateEditShop() {
             <label className='block text-sm font-medium text-ink mb-1 '>Address </label>
             <input type="text" placeholder='Enter Shop address' className='w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ' onChange={(e)=>setAddress(e.target.value)} value={address} />
           </div>
+          <div>
+            <label className='block text-sm font-medium text-ink mb-1 '>Shop location (pickup point) </label>
+            <LocationPicker value={point} onChange={onPlace} />
+            <p className='mt-1 text-xs text-muted'>Delivery partners are matched by their distance from this point, so place the pin exactly on your restaurant.</p>
+          </div>
+          {error && <p role='alert' className='text-sm text-red-600'>{error}</p>}
           <button className='w-full bg-primary text-white px-6  py-3 rounded-lg font-semibold shadow-md hover:bg-primary-hover hover:shadow-lg transition-all duration-200 cursor-pointer ' onClick={handleSubmit} disabled={loading} >{loading?<ClipLoader size={20} color="white" />:"Save" }</button>
         </form>
       </div>

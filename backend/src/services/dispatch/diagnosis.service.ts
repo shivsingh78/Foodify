@@ -5,9 +5,10 @@ import DeliveryOffer from "../../models/deliveryOffer.model.js";
 import DispatchJob from "../../models/dispatchJob.model.js";
 import Order from "../../models/order.model.js";
 import User from "../../models/user.model.js";
+import { AppError } from "../../utils/AppError.js";
 import { haversineKm, isValidLonLat } from "../../utils/geoMath.js";
 import { resolveGeometry } from "./dispatch.service.js";
-import { rankCandidates } from "./ranking.service.js";
+import { partnerDistanceLimitKm, rankCandidates } from "./ranking.service.js";
 import { dispatchWorkerState, geoIndexPresent } from "./worker.js";
 
 /**
@@ -27,7 +28,7 @@ export const diagnoseDispatch = async (viewerId: string, role: "owner" | "admin"
     .sort({ createdAt: -1 })
     .limit(role === "admin" ? 10 : 5);
 
-  const partners = await User.find({ role: "deliveryBoy" }).select("isOnline location locationUpdatedAt").limit(MAX_PARTNERS).lean();
+  const partners = await User.find({ role: "deliveryBoy" }).select("isOnline location locationUpdatedAt deliveryProfile.serviceArea").limit(MAX_PARTNERS).lean();
   const partnerIds = partners.map((p) => p._id);
   const [busy, pending] = await Promise.all([
     DeliveryAssignment.find({ assignedTo: { $in: partnerIds }, status: "assigned" }).select("assignedTo shopOrderId").lean(),
@@ -60,6 +61,7 @@ export const diagnoseDispatch = async (viewerId: string, role: "owner" | "admin"
                 location: p.location?.coordinates,
                 locationUpdatedAt: p.locationUpdatedAt,
                 activeDeliveries: busyIds.has(id(p._id)) ? 1 : 0,
+                maxDistanceKm: partnerDistanceLimitKm(p.deliveryProfile?.serviceArea, geo.shop?.city, cfg),
               })),
             pickup: geo.pickup,
             dropoff: geo.dropoff,
@@ -119,6 +121,7 @@ export const diagnoseDispatch = async (viewerId: string, role: "owner" | "admin"
     rules: {
       maxLocationAgeSeconds: cfg.locationMaxAgeMs / 1000,
       maxPickupDistanceKm: cfg.maxPickupDistanceKm,
+      serviceAreaMaxDistanceKm: cfg.serviceAreaMaxDistanceKm,
       offerTimeoutSeconds: cfg.offerTimeoutMs / 1000,
       maxAttempts: cfg.maxAttempts,
       maxWaitMinutes: cfg.maxWaitMs / 60_000,
@@ -154,5 +157,57 @@ export const myDispatchEligibility = async (partnerId: string, now = new Date())
     pendingOffer: offer ? { orderId: id(offer.order), expiresInSeconds: Math.round((offer.expiresAt.getTime() - now.getTime()) / 1000) } : null,
     worker: dispatchWorkerState(),
     maxPickupDistanceKm: cfg.maxPickupDistanceKm,
+  };
+};
+
+/**
+ * What the restaurant's order card shows while no partner is assigned: counts and state only, never names, phone
+ * numbers or locations. "available" = partners who could take it right now (online, fresh location, within their
+ * distance limit, not busy), using the worker's own rules.
+ */
+export const ownerDispatchSummary = async (ownerId: string, orderId: string, shopOrderId: string, now = new Date()) => {
+  const cfg = defaultDispatchConfig();
+  const order = await Order.findById(orderId);
+  const so = order?.shopOrders.id(shopOrderId);
+  if (!order || !so || id(so.owner) !== ownerId) throw AppError.notFound("Shop order not found");
+  const [job, offer] = await Promise.all([
+    DispatchJob.findOne({ order: order._id, shopOrderId: so._id }).select("status").lean(),
+    DeliveryOffer.findOne({ order: order._id, shopOrderId: so._id, status: "PENDING", expiresAt: { $gt: now } }).select("expiresAt").lean(),
+  ]);
+  let available = 0;
+  const geo = await resolveGeometry(order, so);
+  if (!so.assignedDeliveryBoy && geo.pickup && geo.dropoff) {
+    const partners = await User.find({ role: "deliveryBoy", isOnline: true, locationUpdatedAt: { $gte: new Date(now.getTime() - cfg.locationMaxAgeMs) } })
+      .select("isOnline location locationUpdatedAt deliveryProfile.serviceArea")
+      .limit(MAX_PARTNERS)
+      .lean();
+    const busy = new Set((await DeliveryAssignment.find({ assignedTo: { $in: partners.map((p) => p._id) }, status: "assigned" }).distinct("assignedTo")).map(id));
+    available = rankCandidates(
+      {
+        candidates: partners.map((p) => ({
+          id: id(p._id),
+          role: "deliveryBoy",
+          isOnline: p.isOnline,
+          location: p.location?.coordinates,
+          locationUpdatedAt: p.locationUpdatedAt,
+          activeDeliveries: busy.has(id(p._id)) ? 1 : 0,
+          maxDistanceKm: partnerDistanceLimitKm(p.deliveryProfile?.serviceArea, geo.shop?.city, cfg),
+        })),
+        pickup: geo.pickup,
+        dropoff: geo.dropoff,
+        readyAt: so.readyAt ?? now,
+        now,
+      },
+      cfg,
+    ).ranked.length;
+  }
+  return {
+    orderStatus: so.status,
+    assigned: Boolean(so.assignedDeliveryBoy),
+    searching: job ? ["queued", "processing", "waiting_offer"].includes(job.status) : false,
+    searchStopped: job?.status === "exhausted",
+    availablePartners: available,
+    offerPending: Boolean(offer),
+    offerExpiresInSeconds: offer ? Math.max(0, Math.round((offer.expiresAt.getTime() - now.getTime()) / 1000)) : null,
   };
 };

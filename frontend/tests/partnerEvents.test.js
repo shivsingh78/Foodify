@@ -103,3 +103,28 @@ describe('geolocation failures are visible', () => {
     expect(source).toContain('role="alert"')
   })
 })
+
+describe('restaurant can restart dispatch', () => {
+  it('the order card offers "Find a delivery partner again" for unassigned orders and calls the retry endpoint', () => {
+    const source = readFileSync(new URL('../src/components/OwnerOrderCard.jsx', import.meta.url), 'utf8')
+    expect(source).toContain('Find a delivery partner again')
+    expect(source).toContain('/api/order/retry-dispatch/${data._id}/${data.shopOrders._id}')
+  })
+})
+
+describe('restaurant card: availability as counts only', async () => {
+  const { describeDispatchSummary } = await import('../src/utils/dispatchSummary.js')
+  it('describes each dispatch state without names or numbers of people', () => {
+    expect(describeDispatchSummary(null)).toMatch(/Checking/)
+    expect(describeDispatchSummary({ availablePartners: 2, offerPending: true, offerExpiresInSeconds: 18 })).toBe('2 delivery partners available nearby. Offer sent to a partner, waiting for them to accept (18s left).')
+    expect(describeDispatchSummary({ availablePartners: 1, offerPending: false })).toBe('1 delivery partner available nearby. Sending an offer…')
+    expect(describeDispatchSummary({ availablePartners: 0 })).toMatch(/No delivery partner available/)
+    expect(describeDispatchSummary({ availablePartners: 1, searchStopped: true })).toMatch(/Find a delivery partner again/)
+  })
+  it('the order card uses the summary endpoint and no longer lists partner names', () => {
+    const source = readFileSync(new URL('../src/components/OwnerOrderCard.jsx', import.meta.url), 'utf8')
+    expect(source).toContain('/api/order/dispatch-summary/')
+    expect(source).toContain('describeDispatchSummary(summary)')
+    expect(source).not.toContain('availableBoys')
+  })
+})

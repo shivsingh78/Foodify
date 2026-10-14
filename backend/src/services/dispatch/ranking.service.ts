@@ -10,6 +10,8 @@ export interface Candidate {
   location?: unknown;
   locationUpdatedAt?: Date | null;
   activeDeliveries: number;
+  /** Per-partner distance limit (service-area partners get a larger one); defaults to cfg.maxPickupDistanceKm. */
+  maxDistanceKm?: number;
 }
 
 export type RejectionReason =
@@ -82,7 +84,7 @@ export const rankCandidates = (input: RankingInput, cfg: DispatchConfig): Rankin
     if (ageMs > cfg.locationMaxAgeMs || ageMs < -5_000) { reject("stale_location"); continue; }
     if (c.activeDeliveries >= cfg.maxActiveDeliveries) { reject("at_capacity"); continue; }
     const distanceKm = haversineKm(c.location, input.pickup);
-    if (distanceKm > cfg.maxPickupDistanceKm) { reject("too_far"); continue; }
+    if (distanceKm > (c.maxDistanceKm ?? cfg.maxPickupDistanceKm)) { reject("too_far"); continue; }
 
     const toRestaurant = travelMinutes(c.location, input.pickup, cfg);
     const eta = computeEta({ now: input.now, readyAt: input.readyAt, pickup: input.pickup, dropoff: input.dropoff, partner: c.location }, cfg);
@@ -120,3 +122,26 @@ export const rankCandidates = (input: RankingInput, cfg: DispatchConfig): Rankin
   ranked.sort((a, b) => Math.round((a.score - b.score) * 1e9) || (a.partnerId < b.partnerId ? -1 : a.partnerId > b.partnerId ? 1 : 0));
   return { ranked, rejected };
 };
+
+const words = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+/**
+ * Does a partner's free-text service area ("Bhopal", "Arera Colony, Bhopal", "bhopal district") cover the
+ * restaurant's city? True when every word of the city appears in the service area. Empty values never match.
+ */
+export const serviceAreaCovers = (serviceArea: unknown, city: unknown): boolean => {
+  if (typeof serviceArea !== "string" || typeof city !== "string") return false;
+  const area = new Set(words(serviceArea));
+  const cityWords = words(city);
+  return cityWords.length > 0 && cityWords.every((w) => area.has(w));
+};
+
+/** The distance limit that applies to one partner for one restaurant. */
+export const partnerDistanceLimitKm = (serviceArea: unknown, shopCity: unknown, cfg: Pick<DispatchConfig, "maxPickupDistanceKm" | "serviceAreaMaxDistanceKm">): number =>
+  serviceAreaCovers(serviceArea, shopCity) ? cfg.serviceAreaMaxDistanceKm : cfg.maxPickupDistanceKm;

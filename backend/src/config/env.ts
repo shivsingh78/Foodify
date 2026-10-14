@@ -52,7 +52,9 @@ const envSchema = z
     DISPATCH_MAX_WAIT_MINUTES: tunable(10, 1, 240),
     DISPATCH_RETRY_DELAY_SECONDS: tunable(10, 1, 600),
     DISPATCH_LOCATION_MAX_AGE_SECONDS: tunable(120, 10, 3600),
-    DISPATCH_MAX_PICKUP_DISTANCE_KM: tunable(5, 0.5, 50),
+    DISPATCH_MAX_PICKUP_DISTANCE_KM: tunable(10, 0.5, 50),
+    /** Partners whose service area names the restaurant's city/district may be this far away (still a safety bound). */
+    DISPATCH_SERVICE_AREA_MAX_KM: tunable(50, 1, 200),
     DISPATCH_AVG_SPEED_KMH: tunable(20, 5, 80),
     DISPATCH_ROUTE_FACTOR: tunable(1.3, 1, 3),
     DISPATCH_DEFAULT_PREP_MINUTES: tunable(15, 1, 120),

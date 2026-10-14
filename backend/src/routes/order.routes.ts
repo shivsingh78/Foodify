@@ -14,6 +14,7 @@ import {
   acceptOrder,
   declineOffer,
   dispatchDiagnosis,
+  dispatchSummary,
   dispatchStatus,
   getCurrentOrder,
   getDeliveryBoyAssignment,
@@ -22,6 +23,7 @@ import {
   getTodayDeliveries,
   myEligibility,
   placeOrder,
+  retryDispatch,
   sendDeliveryOtp,
   updateOrderStatus,
   verifyDeliveryOtp,
@@ -47,6 +49,23 @@ orderRouter.post(
   limits.orderWrite,
   validate({ params: orderStatusParamsSchema, body: updateOrderStatusSchema }),
   updateOrderStatus,
+);
+
+// Restaurant asks dispatch to look for a partner again (e.g. after it gave up on an "out of delivery" order).
+orderRouter.post(
+  "/retry-dispatch/:orderId/:shopOrderId",
+  requireRole("owner"),
+  limits.orderWrite,
+  validate({ params: z.strictObject({ orderId: objectIdSchema, shopOrderId: objectIdSchema }) }),
+  retryDispatch,
+);
+
+// Restaurant's order card: partner availability as counts only.
+orderRouter.get(
+  "/dispatch-summary/:orderId/:shopOrderId",
+  requireRole("owner"),
+  validate({ params: z.strictObject({ orderId: objectIdSchema, shopOrderId: objectIdSchema }) }),
+  dispatchSummary,
 );
 
 // Delivery partner

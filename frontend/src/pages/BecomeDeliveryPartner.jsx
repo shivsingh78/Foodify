@@ -55,7 +55,7 @@ function BecomeDeliveryPartner() {
           )}
         </Field>
         {motorised && <Field label="Vehicle registration number (used to identify you on deliveries)" value={form.vehicleNumber} onChange={set('vehicleNumber')} required />}
-        <Field label="Service area (city or neighbourhood you can cover)" value={form.serviceArea} onChange={set('serviceArea')} required />
+        <Field label="City / district you deliver in (e.g. Bhopal). You get orders from restaurants in this city, plus any restaurant close to you" value={form.serviceArea} onChange={set('serviceArea')} required />
         {err && <p role="alert" className="alert-error mb-4">{err}</p>}
         <button type="submit" className="btn-primary w-full" disabled={loading}>{loading ? <ClipLoader color="white" size={20} /> : resubmitId ? 'Resubmit application' : 'Submit application'}</button>
         <button type="button" className="btn-secondary mt-3 w-full" onClick={() => navigate('/my-applications')}>Cancel</button>

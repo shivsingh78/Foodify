@@ -1,7 +1,7 @@
-import { diagnoseDispatch, myDispatchEligibility } from "../services/dispatch/diagnosis.service.js";
+import { diagnoseDispatch, myDispatchEligibility, ownerDispatchSummary } from "../services/dispatch/diagnosis.service.js";
 import type { Request, Response } from "express";
 import { currentUserId } from "../middlewares/auth.js";
-import { declineOffer as declineOfferService, getDispatchStatus } from "../services/dispatch/dispatch.service.js";
+import { declineOffer as declineOfferService, getDispatchStatus, retryDispatch as retryDispatchService } from "../services/dispatch/dispatch.service.js";
 import * as orderService from "../services/order.service.js";
 import { AppError } from "../utils/AppError.js";
 
@@ -90,4 +90,12 @@ export const dispatchDiagnosis = async (req: Request, res: Response) => {
 
 export const myEligibility = async (req: Request, res: Response) => {
   res.status(200).json(await myDispatchEligibility(currentUserId(req)));
+};
+
+export const retryDispatch = async (req: Request, res: Response) => {
+  res.status(200).json(await retryDispatchService(currentUserId(req), String(req.params.orderId), String(req.params.shopOrderId)));
+};
+
+export const dispatchSummary = async (req: Request, res: Response) => {
+  res.status(200).json(await ownerDispatchSummary(currentUserId(req), String(req.params.orderId), String(req.params.shopOrderId)));
 };

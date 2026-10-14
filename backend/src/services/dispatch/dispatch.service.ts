@@ -13,7 +13,7 @@ import { haversineKm, isValidLonLat, type LonLat } from "../../utils/geoMath.js"
 import { notify } from "../notification.service.js";
 import { noticeAfterLateAcceptance } from "../pickupNotice.service.js";
 import { computeEta } from "./eta.service.js";
-import { rankCandidates } from "./ranking.service.js";
+import { partnerDistanceLimitKm, rankCandidates } from "./ranking.service.js";
 
 const id = (v: unknown) => String(v);
 /** Structured, secret-free dispatch trace: ids, states and counts only. */
@@ -34,7 +34,7 @@ const toLonLat = (lon: unknown, lat: unknown): LonLat | null => {
 
 /** Pickup = the shop's location when known, otherwise the customer's address as a documented approximation. */
 export const resolveGeometry = async (order: OrderDocument, shopOrder: IShopOrder) => {
-  const shop = await Shop.findById(shopOrder.shop).select("location avgPrepMinutes name").lean();
+  const shop = await Shop.findById(shopOrder.shop).select("location avgPrepMinutes name city").lean();
   const dropoff = toLonLat(order.deliveryAddress.longitude, order.deliveryAddress.latitude);
   const shopPoint = shop?.location?.coordinates ? toLonLat(shop.location.coordinates[0], shop.location.coordinates[1]) : null;
   return { shop, dropoff, pickup: shopPoint ?? dropoff, pickupApproximate: !shopPoint };
@@ -154,7 +154,7 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
         userId: shopOrder.owner,
         type: "order_status",
         title: "No delivery partner found",
-        message: "We could not find a delivery partner yet. Set the order to out for delivery again to retry.",
+        message: "We could not find a delivery partner yet. Use \"Find a delivery partner again\" on the order to retry.",
         orderId: order._id,
         shopOrderId: shopOrder._id,
       });
@@ -175,9 +175,10 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
     role: "deliveryBoy",
     isOnline: true,
     locationUpdatedAt: { $gte: new Date(now.getTime() - cfg.locationMaxAgeMs) },
-    location: { $near: { $geometry: { type: "Point", coordinates: [pickup[0], pickup[1]] }, $maxDistance: cfg.maxPickupDistanceKm * 1000 } },
+    // Widest limit any partner can have; each partner's own limit is applied in ranking.
+    location: { $near: { $geometry: { type: "Point", coordinates: [pickup[0], pickup[1]] }, $maxDistance: Math.max(cfg.maxPickupDistanceKm, cfg.serviceAreaMaxDistanceKm) * 1000 } },
   })
-    .select("role isOnline location locationUpdatedAt")
+    .select("role isOnline location locationUpdatedAt deliveryProfile.serviceArea")
     .limit(cfg.maxCandidates)
     .lean();
 
@@ -189,7 +190,8 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
   const activeCount = new Map<string, number>(busy.map((p) => [id(p), 1]));
   const excluded = new Set<string>([...fresh.excludedPartners.map(id), ...offered.map(id)]);
 
-  const { ranked, rejected } = rankCandidates(
+  const rankExcluding = (excludedIds: ReadonlySet<string>) =>
+    rankCandidates(
     {
       candidates: nearby.map((u) => ({
         id: id(u._id),
@@ -198,15 +200,32 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
         location: u.location?.coordinates,
         locationUpdatedAt: u.locationUpdatedAt,
         activeDeliveries: activeCount.get(id(u._id)) ?? 0,
+        maxDistanceKm: partnerDistanceLimitKm(u.deliveryProfile?.serviceArea, shop?.city, cfg),
       })),
       pickup,
       dropoff,
       readyAt: shopOrder.readyAt ?? new Date(now.getTime() + cfg.defaultPrepMinutes * 60_000),
       now,
-      excluded,
+      excluded: excludedIds,
     },
     cfg,
   );
+  let { ranked, rejected } = rankExcluding(excluded);
+
+  // Small fleets: when nobody new is left, partners who only let an offer TIME OUT get another chance; partners who
+  // DECLINED stay excluded. Still one offer at a time, bounded by maxAttempts and the search window.
+  if (ranked.length === 0 && fresh.excludedPartners.length > 0) {
+    const declined = new Set((await DeliveryOffer.find({ order: job.order, shopOrderId: job.shopOrderId, status: "DECLINED" }).distinct("partner")).map(id));
+    const busyElsewhere = new Set(offered.map(id));
+    const timedOut = fresh.excludedPartners.map(id).filter((p) => !declined.has(p) && !busyElsewhere.has(p));
+    if (timedOut.length > 0) {
+      const retry = rankExcluding(new Set([...excluded].filter((p) => !timedOut.includes(p))));
+      if (retry.ranked.length > 0) {
+        ({ ranked, rejected } = retry);
+        dlog("reoffer_after_timeout", { jobId: id(job._id), orderId: id(job.order), partnerId: retry.ranked[0]!.partnerId, attempt });
+      }
+    }
+  }
 
   const best = ranked[0];
   if (!best) {
@@ -684,4 +703,21 @@ export const getDispatchStatus = async (viewerId: string, role: UserRole, orderI
     eta: so.eta ?? null,
     etaNote: "Estimates assume an average speed and are not guaranteed arrival times.",
   };
+};
+
+/**
+ * Restaurant-initiated retry for an unassigned live order (typically after dispatch gave up, which the order status
+ * alone can no longer trigger once it is "out of delivery"). Reopens an exhausted job with a fresh search window, or
+ * makes a waiting job search now. Never creates a second job, offer or assignment; idempotent.
+ */
+export const retryDispatch = async (ownerId: string, orderId: string, shopOrderId: string) => {
+  const order = await Order.findById(orderId);
+  const so = order?.shopOrders.id(shopOrderId);
+  if (!order || !so || id(so.owner) !== ownerId) throw AppError.notFound("Shop order not found");
+  if (!(LIVE_STATUSES as readonly string[]).includes(so.status)) throw AppError.conflict("Only orders being prepared or out for delivery can be dispatched", "NOT_DISPATCHABLE");
+  if (so.assignedDeliveryBoy) throw AppError.conflict("A delivery partner is already assigned", "ALREADY_ASSIGNED");
+  if (order.paymentMethod !== "cod" && !order.payment) throw AppError.conflict("This order has not been paid yet", "ORDER_NOT_PAID");
+  await enqueueDispatch(order._id, so._id, so.readyAt ?? new Date(), { expedite: true });
+  dlog("dispatch_retried_by_owner", { orderId: id(order._id), shopOrderId: id(so._id) });
+  return getDispatchStatus(ownerId, "owner", orderId, shopOrderId);
 };

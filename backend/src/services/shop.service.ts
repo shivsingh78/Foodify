@@ -1,4 +1,4 @@
-import type { CreateEditShopInput } from "@foodify/validation";
+import { toGeoJsonPoint, type CreateEditShopInput } from "@foodify/validation";
 import Shop from "../models/shop.model.js";
 import { AppError } from "../utils/AppError.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
@@ -25,6 +25,9 @@ export const createOrUpdateShop = async (
   input: CreateEditShopInput,
   imagePath?: string,
 ) => {
+  const { latitude, longitude, ...fields } = input;
+  // Only replaced when the owner picked a point; dispatch measures partner distance from it.
+  const location = latitude !== undefined && longitude !== undefined ? toGeoJsonPoint(latitude, longitude) : undefined;
   const existing = await Shop.findOne({ owner: ownerId });
   if (!existing && !imagePath) throw AppError.badRequest("Shop image is required");
 
@@ -33,12 +36,13 @@ export const createOrUpdateShop = async (
   let shopId;
   let created = false;
   if (!existing) {
-    const shop = await Shop.create({ ...input, image, owner: ownerId });
+    const shop = await Shop.create({ ...fields, ...(location && { location }), image, owner: ownerId });
     shopId = shop._id;
     created = true;
   } else {
     const previousImage = existing.image;
-    Object.assign(existing, input);
+    Object.assign(existing, fields);
+    if (location) existing.location = location;
     if (image) existing.image = image;
     await existing.save();
     if (image) void deleteFromCloudinary(previousImage);

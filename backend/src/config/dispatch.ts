@@ -10,6 +10,8 @@ export interface DispatchConfig {
   retryDelayMs: number;
   locationMaxAgeMs: number;
   maxPickupDistanceKm: number;
+  /** Larger limit for partners whose service area matches the restaurant's city/district. */
+  serviceAreaMaxDistanceKm: number;
   /** Assumed average speed. An estimate, not measured traffic data. */
   avgSpeedKmh: number;
   /** Straight-line (Haversine) distance is multiplied by this to approximate road distance. */
@@ -33,6 +35,7 @@ export const defaultDispatchConfig = (): DispatchConfig => ({
   retryDelayMs: env.DISPATCH_RETRY_DELAY_SECONDS * 1000,
   locationMaxAgeMs: env.DISPATCH_LOCATION_MAX_AGE_SECONDS * 1000,
   maxPickupDistanceKm: env.DISPATCH_MAX_PICKUP_DISTANCE_KM,
+  serviceAreaMaxDistanceKm: Math.max(env.DISPATCH_SERVICE_AREA_MAX_KM, env.DISPATCH_MAX_PICKUP_DISTANCE_KM),
   avgSpeedKmh: env.DISPATCH_AVG_SPEED_KMH,
   routeFactor: env.DISPATCH_ROUTE_FACTOR,
   defaultPrepMinutes: env.DISPATCH_DEFAULT_PREP_MINUTES,
