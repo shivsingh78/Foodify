@@ -7,7 +7,5 @@
 .github
 .vscode
 docs
-frontend/src
-frontend/tests
 *.md
 **/*.log
