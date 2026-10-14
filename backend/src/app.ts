@@ -16,6 +16,7 @@ import analyticsRouter from "./routes/analytics.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import geoRouter from "./routes/geo.routes.js";
 import { adminApplicationRouter, applicationRouter } from "./routes/application.routes.js";
+import incidentRouter from "./routes/incident.routes.js";
 import itemRouter from "./routes/item.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import orderRouter from "./routes/order.routes.js";
@@ -121,6 +122,7 @@ export const createApp = (options: { frontendDir?: string } = {}): Express => {
   app.use("/api/geo", geoRouter);
   app.use("/api/applications", applicationRouter);
   app.use("/api/admin/applications", adminApplicationRouter);
+  app.use("/api/admin/incidents", incidentRouter);
 
   // Unknown API paths must stay JSON 404s and never fall through to the SPA.
   app.use("/api", notFoundHandler);

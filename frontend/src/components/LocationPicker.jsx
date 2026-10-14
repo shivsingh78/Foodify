@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { MapKeyNotice, MapTiles } from './MapTiles'
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import '../utils/leafletIcons'
 import { geoErrorMessage, MIN_SEARCH_LENGTH, reverseGeocode, searchAddresses } from '../utils/geo'
@@ -83,12 +84,13 @@ function LocationPicker({ value, onChange }) {
       {notice && <p className="mt-1 text-xs text-muted" role="status">{notice}</p>}
       <div className="mt-2 h-56 overflow-hidden rounded-lg border border-line">
         <MapContainer className="h-full w-full" center={value ? [value.latitude, value.longitude] : INDIA} zoom={value ? 16 : 4}>
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MapTiles />
           <Recenter value={value} />
           <ClickToSelect onSelect={pickPoint} />
           {value && <Marker position={[value.latitude, value.longitude]} draggable eventHandlers={{ dragend: (e) => { const p = e.target.getLatLng(); pickPoint(p.lat, p.lng) } }} />}
         </MapContainer>
       </div>
+      <MapKeyNotice />
       <p className="mt-1 text-xs text-muted">
         {value ? `Selected: ${value.latitude.toFixed(5)}, ${value.longitude.toFixed(5)}` : 'Search, or tap the map to place the pin.'}
       </p>

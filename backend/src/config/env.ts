@@ -27,6 +27,7 @@ const envSchema = z
     VITE_FIREBASE_PROJECT_ID: optional,
     VITE_FIREBASE_AUTH_DOMAIN: optional,
     VITE_RAZORPAY_KEY_ID: optional,
+    VITE_GEOAPIFY_MAPS_API_KEY: optional,
     MONGODB_URL: z.string().min(1, "MONGODB_URL is required"),
     JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
     REDIS_URL: optional,
@@ -59,6 +60,18 @@ const envSchema = z
     DISPATCH_HANDOFF_BUFFER_MINUTES: tunable(3, 0, 30),
     DISPATCH_WORKER_CONCURRENCY: tunable(5, 1, 50),
     DISPATCH_WORKER_INTERVAL_MS: tunable(2000, 200, 60000),
+
+    // Self-healing order orchestration (all optional; defaults documented in the README)
+    // Off unless explicitly enabled; see the README rollout procedure.
+    ORCHESTRATION_ENABLED: z.enum(["true", "false"]).default("false"),
+    ORCHESTRATION_CHECK_INTERVAL_MS: tunable(30_000, 5_000, 600_000),
+    /** Grace period after a shop order's expected ready time before it counts as stuck. */
+    ORCHESTRATION_PREPARATION_TIMEOUT_MINUTES: tunable(10, 1, 240),
+    ORCHESTRATION_MAX_RECOVERY_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
+    ORCHESTRATION_RETRY_DELAY_SECONDS: tunable(120, 10, 3600),
+    /** If no instance ran the engine for this long, the activation baseline moves to the next start. */
+    ORCHESTRATION_MAX_DOWNTIME_MINUTES: tunable(15, 1, 1440),
+    ORCHESTRATION_BATCH_SIZE: z.coerce.number().int().min(10).max(500).default(100),
 
     CLOUDINARY_CLOUD_NAME: optional,
     CLOUDINARY_API_KEY: optional,

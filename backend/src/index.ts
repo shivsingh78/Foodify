@@ -5,6 +5,7 @@ import { connectDb } from "./config/db.js";
 import { env } from "./config/env.js";
 import { closeRedis, getRedis } from "./config/redis.js";
 import { closeSocket, initSocket } from "./events/socket.js";
+import { startOrchestrationWorker, stopOrchestrationWorker } from "./services/orchestration/worker.js";
 import { startDispatchWorker, stopDispatchWorker } from "./services/dispatch/worker.js";
 
 const startServer = async () => {
@@ -16,6 +17,7 @@ const startServer = async () => {
   initSocket(server, allowedOrigins);
 
   startDispatchWorker();
+  startOrchestrationWorker();
 
   server.listen(env.PORT, () => {
     console.log(`✅ Server started at: ${env.PORT}`);
@@ -26,6 +28,7 @@ const startServer = async () => {
     console.log(`${signal} received, shutting down`);
     server.close();
     stopDispatchWorker();
+    await stopOrchestrationWorker();
     await closeSocket();
     await closeRedis();
     await mongoose.disconnect();

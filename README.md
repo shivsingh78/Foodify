@@ -72,6 +72,73 @@ When an owner sets an order to **preparing** (optionally with `prepMinutes`, els
 
 **Manual staging checks:** two real partners in the app with location sharing on; place and prepare an order and confirm only the closer one gets the offer; decline and confirm the other does; let one expire; accept and confirm the customer's tracking page shows an approximate arrival time; cancel while an offer is pending.
 
+## Self-healing order orchestration
+
+Detects shop orders stuck in `preparing`, makes a few safe, bounded recovery attempts, records everything, and escalates to administrators when automatic recovery does not help. It extends the dispatch/ETA engine and reuses its ETA model, dispatch job and notification services.
+
+**Supported anomaly**: `preparation_overdue`: a shop order is still `preparing`, not picked up, and `ORCHESTRATION_PREPARATION_TIMEOUT_MINUTES` have passed since its expected ready time (`readyAt`; for older orders without it, `preparingAt` + the default prep time). More anomaly types can be added in `ANOMALY_TYPES` and the detector.
+
+```mermaid
+flowchart TD
+  T[Worker tick every ORCHESTRATION_CHECK_INTERVAL_MS] --> D[Detector: bounded keyset scan of overdue preparing orders]
+  D -->|upsert, unique partial index| I[(OrchestrationIncident: open)]
+  T --> C{Claim due incident: atomic, leased, attempts +1}
+  I --> C
+  C --> R{Re-read order: still preparing?}
+  R -->|moved on| OK[recovered / resolved: order untouched]
+  R -->|yes| A[Attempt: recompute ETA, ensure dispatch job, notify once]
+  A --> B{attempts left?}
+  B -->|yes| S[open again, nextAttemptAt = now + retry delay]
+  S --> C
+  B -->|no| E[escalated: admins notified once, history kept]
+  E -->|admin retry: one more attempt| I
+  E -->|admin resolve or order moves on| OK
+```
+
+**Incident states**: `open` → `recovering` (leased by one worker) → `open` (retry scheduled) | `recovered` (order progressed on its own) | `resolved` (admin, or order cancelled) | `escalated` (attempts exhausted; stays unresolved until an admin acts or the order moves on). A partial unique index allows one *unresolved* incident per order, shop order and anomaly, so scans, restarts and several instances cannot duplicate it. History is kept on the incident (newest 50 events).
+
+**What an attempt does (and never does)**: re-reads the order; recomputes the ETA with the existing model only when a partner is assigned (the original `etaAtAssignment` is never changed); creates a dispatch job only if none exists and nothing is assigned; notifies the owner, customer and assigned partner once per incident (`order_delayed`). It never changes order status, marks anything prepared, delivered or cancelled, refunds, reassigns a partner who has picked up, or creates offers. Escalation notifies every admin once (`incident_escalated`).
+
+**Concurrency**: all coordination is in MongoDB (unique index, conditional updates, leased claims; the attempt is counted when claimed, so a crash cannot cause unbounded retries). A crashed worker's lease (60 s) expires and another instance takes over. Notification flags are flipped atomically *before* sending, so a retry never double-sends; the cost is that a crash between flag and send loses that one notification (it remains visible in the incident history/admin API).
+
+**Redis**: not used. Orchestration behaves identically with Redis absent or down; nothing here relies on Redis for locking.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `ORCHESTRATION_ENABLED` | `false` | must be `true` to run the worker on this instance (off by default) |
+| `ORCHESTRATION_CHECK_INTERVAL_MS` | `30000` | loop period |
+| `ORCHESTRATION_PREPARATION_TIMEOUT_MINUTES` | `10` | grace after expected ready time |
+| `ORCHESTRATION_MAX_RECOVERY_ATTEMPTS` | `3` | attempts before escalation |
+| `ORCHESTRATION_RETRY_DELAY_SECONDS` | `120` | delay between attempts |
+| `ORCHESTRATION_MAX_DOWNTIME_MINUTES` | `15` | engine off/down for longer than this (all instances) moves the activation baseline forward at the next start |
+| `ORCHESTRATION_BATCH_SIZE` | `100` | scan / processing batch size |
+
+**Admin API** (role `admin` only, under `/api/admin/incidents`): `GET /` (`page`, `limit`, `status`, `anomalyType`), `GET /metrics`, `GET /:incidentId` (with history), `POST /:incidentId/resolve` `{ reason }`, `POST /:incidentId/retry` (escalated only; grants exactly one attempt through the same checks), `GET /backlog` and `POST /backlog/process` `{ orderId, shopOrderId }` (pre-activation orders, below).
+
+**Socket.IO events** (camelCase like the existing ones, sent only to the shop owner and admins; ids and states only): `orderAnomalyDetected`, `orderRecoveryAttempted`, `orderRecoverySucceeded`, `orderIncidentEscalated`. Customers and partners get persisted `order_delayed` notifications and the existing `etaUpdated` event, never incident events.
+
+**Observability**: one JSON log line per event (`component: "orchestration"`), a start-up line with the active non-secret settings, and metrics at `GET /api/admin/incidents/metrics` (durable incident counts by status plus per-instance counters: detected, attempts, failures, skipped, recovered, escalated, worker errors, last run duration, average detection-to-recovery time).
+
+### Rolling out orchestration safely
+
+The engine is **off by default**. Nothing runs, nothing is written and nobody is notified until `ORCHESTRATION_ENABLED=true`. Ordinary order processing and delivery dispatch never depend on it.
+
+**Activation baseline.** The first time any instance runs enabled, it atomically creates one MongoDB document (`orchestrationstates`, `_id: "orchestration"`) holding `activatedAt`. Automatic detection only considers shop orders whose expected ready time is at or after that baseline, so orders that were already late when you switched it on are not notified (no burst). Every tick also writes a heartbeat to the same document. All instances share it, so starting several at once, or restarting, never changes the baseline. If **no** instance has run the engine for more than `ORCHESTRATION_MAX_DOWNTIME_MINUTES` (it was switched off, rolled back or fully down), the baseline moves to the next start, so re-enabling never turns the downtime into a burst either.
+
+**Existing overdue orders** are not discarded or modified. They stay in `preparing` and are listed read-only at `GET /api/admin/incidents/backlog` (ids, expected ready time, minutes overdue, whether an incident exists). To deliberately process one, an admin calls `POST /api/admin/incidents/backlog/process` with `{ orderId, shopOrderId }`; this opens a normal incident (history records the admin), and the worker then handles it, notifies once and escalates as usual. It is refused while the engine is disabled, and for orders that are not currently overdue. Admins can also contact the restaurant and resolve the order through the normal order flow.
+
+**Procedure**
+1. Deploy with `ORCHESTRATION_ENABLED` unset or `false` (the new indexes build on start-up; nothing else changes).
+2. Optionally on staging: set `ORCHESTRATION_ENABLED=true`, `ORCHESTRATION_PREPARATION_TIMEOUT_MINUTES=1`, `ORCHESTRATION_CHECK_INTERVAL_MS=5000`, and watch `GET /api/admin/incidents/metrics` and the `component: "orchestration"` log lines.
+3. In production set `ORCHESTRATION_ENABLED=true` and restart/redeploy. Check the log line `orchestration_started`, then `activation_baseline` (`change: "created"`), and `GET /api/admin/incidents/metrics` (`enabled: true`, `activatedAt`).
+4. Review `GET /api/admin/incidents/backlog` and process or handle those orders manually as you see fit.
+
+**Rollback**: set `ORCHESTRATION_ENABLED=false` (or remove it) and restart. The worker stops, no detection, retries or notifications happen, and the open incidents and history stay in MongoDB for review (admins can still list and resolve them). Re-enabling within `ORCHESTRATION_MAX_DOWNTIME_MINUTES` simply resumes (open incidents continue, already-sent notifications are not repeated); after a longer pause the baseline moves forward as described, while older open incidents continue and anything that became overdue meanwhile appears in the backlog. To start completely fresh, delete the `orchestrationstates` document (and optionally the `orchestrationincidents` collection) while the engine is disabled; the next enable then creates a new baseline.
+
+**Local development**: set `ORCHESTRATION_ENABLED=true`, then `pnpm dev` runs it; to see an incident quickly set `ORCHESTRATION_PREPARATION_TIMEOUT_MINUTES=1` and `ORCHESTRATION_CHECK_INTERVAL_MS=5000`, put an order in `preparing` with a short prep time, and wait. **Production**: no new infrastructure; new indexes build automatically on start-up.
+
+**Limitations**: only one anomaly type; no automatic action can unblock a restaurant that never updates the order (it escalates to a human); there is no admin UI yet (API only); counters are per instance; the "overdue" threshold is relative to the owner's own estimate, so an owner who sets a very long prep time delays detection; orders that were already late at activation are never handled automatically (see below).
+
 ## Email with Resend
 
 Password-reset and delivery OTP emails use the [Resend](https://resend.com) API (no Gmail, 2-Step Verification or app password needed).
@@ -125,7 +192,7 @@ Limitations: verification documents are not collected (only a public restaurant 
 
 Checkout has a Leaflet map plus Geoapify address autocomplete (debounced, minimum 3 characters). The user can pick a suggestion, click the map, drag the marker, or press the crosshair button (the only place checkout asks for browser location). Geocoding goes through `GET /api/geo/autocomplete?text=` and `GET /api/geo/reverse?lat=&lon=` (login required, 60 requests/min, 5 s upstream timeout, fixed Geoapify host). Orders keep the legacy `deliveryAddress.latitude/longitude` and also store `deliveryAddress.location` as GeoJSON `[longitude, latitude]`; no `2dsphere` index is added yet because nothing queries order locations.
 
-Get a key at <https://myprojects.geoapify.com> (create a project, copy its API key) and set `GEOAPIFY_API_KEY` in `backend/.env`. Map tiles come from the public OpenStreetMap tile server with attribution; its [usage policy](https://operations.osmfoundation.org/policies/tiles/) forbids heavy production traffic, so switch the `TileLayer` URL to a commercial/self-hosted tile provider before launch.
+Get a key at <https://myprojects.geoapify.com> (create a project, copy its API key) and set `GEOAPIFY_API_KEY` in `backend/.env`. Map tiles come from Geoapify's raster tile API (`osm-carto`), which needs a *separate browser key*: create a second Geoapify key, restrict it to your production domain (allowed HTTP referrers/origins) and to the Map Tiles API in the Geoapify dashboard, and set it as `VITE_GEOAPIFY_MAPS_API_KEY` (public runtime config, in `frontend/.env` for local dev or the Kuros runtime variables). Browser keys are visible to every user, so restriction is the only protection; never reuse `GEOAPIFY_API_KEY` there. Without it maps show a notice and address search still works (there is deliberately no fallback to the public OpenStreetMap tile server, which blocks production traffic).
 
 ## Firebase Admin credentials (server-side Google sign-in)
 
@@ -156,7 +223,7 @@ One container, one public URL. The root `Dockerfile` builds the shared package, 
 
 **Build-time vs runtime config.** Vite inlines `import.meta.env.*` when `vite build` runs, so changing a Kuros environment variable would not change an already-built bundle. Instead, `index.html` loads `/runtime-config.js` (a classic script, so it runs before the app bundle), which Express generates at request time from an explicit allowlist (`backend/src/config/publicConfig.ts`) and serves with `Cache-Control: no-store`. The frontend reads `window.__FOODIFY_CONFIG__` first and falls back to `import.meta.env` (local dev with `frontend/.env`). No Docker build args are needed.
 
-**Public values** (visible in any browser, not secrets): `VITE_FIREBASE_APIKEY`, `VITE_FIREBASE_PROJECT_ID` (defaults to `FIREBASE_PROJECT_ID`), `VITE_FIREBASE_AUTH_DOMAIN` (optional), `VITE_RAZORPAY_KEY_ID` (defaults to `RAZORPAY_KEY_ID`; the *key id* only, never `RAZORPAY_KEY_SECRET`). `VITE_API_URL` is not served: the browser uses the page's own origin for API and Socket.IO. Everything else in `backend/.env.example` stays server-side.
+**Public values** (visible in any browser, not secrets): `VITE_FIREBASE_APIKEY`, `VITE_FIREBASE_PROJECT_ID` (defaults to `FIREBASE_PROJECT_ID`), `VITE_FIREBASE_AUTH_DOMAIN` (optional), `VITE_RAZORPAY_KEY_ID` (defaults to `RAZORPAY_KEY_ID`; the *key id* only, never `RAZORPAY_KEY_SECRET`), `VITE_GEOAPIFY_MAPS_API_KEY` (dedicated, domain-restricted map-tile key). `VITE_API_URL` is not served: the browser uses the page's own origin for API and Socket.IO. Everything else in `backend/.env.example` stays server-side.
 
 **Kuros settings**
 

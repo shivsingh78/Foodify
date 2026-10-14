@@ -480,6 +480,43 @@ export const refreshEtaOnPartnerMove = async (partnerId: string, point: LonLat, 
   return true;
 };
 
+export type DelayEtaResult = { updated: boolean; reason: "updated" | "unchanged" | "no_assignment" | "no_geometry" | "state_changed"; eta?: IEta };
+
+/**
+ * Re-estimates the delivery time of a shop order whose food is running late, using the same ETA model as
+ * assignment. Only meaningful once a partner is assigned (an estimate exists) and before pickup. It does not
+ * claim the restaurant has started or finished cooking: the model just never predicts a pickup in the past.
+ * `etaAtAssignment` is never touched, so the accuracy metric still evaluates the original prediction.
+ */
+export const recomputeEtaForDelay = async (orderId: unknown, shopOrderId: unknown, now = new Date()): Promise<DelayEtaResult> => {
+  const order = await Order.findById(orderId);
+  const shopOrder = order?.shopOrders.id(shopOrderId as string);
+  if (!order || !shopOrder || shopOrder.status !== "preparing" || shopOrder.pickedUpAt) return { updated: false, reason: "state_changed" };
+  if (!shopOrder.assignedDeliveryBoy || !shopOrder.eta) return { updated: false, reason: "no_assignment" };
+
+  const [partner, geo] = await Promise.all([User.findById(shopOrder.assignedDeliveryBoy).select("location").lean(), resolveGeometry(order, shopOrder)]);
+  if (!geo.pickup || !geo.dropoff) return { updated: false, reason: "no_geometry" };
+  const partnerPoint = partner?.location?.coordinates ? toLonLat(partner.location.coordinates[0], partner.location.coordinates[1]) : null;
+  const eta = computeEta({ now, readyAt: shopOrder.readyAt ?? now, pickup: geo.pickup, dropoff: geo.dropoff, partner: partnerPoint }, defaultDispatchConfig());
+  if (Math.abs(shopOrder.eta.deliveryAt.getTime() - eta.deliveryAt.getTime()) < ETA_MIN_CHANGE_MS) return { updated: false, reason: "unchanged" };
+
+  const doc: IEta = {
+    predictedAt: now,
+    basis: "delay_recovery",
+    partnerArrivalAt: eta.partnerArrivalAt,
+    pickupAt: eta.pickupAt,
+    deliveryAt: eta.deliveryAt,
+    basisPoint: partnerPoint ? { type: "Point", coordinates: [partnerPoint[0], partnerPoint[1]] } : null,
+  };
+  const written = await Order.updateOne(
+    { _id: order._id, shopOrders: { $elemMatch: { _id: shopOrder._id, status: "preparing", pickedUpAt: null } } },
+    { $set: { "shopOrders.$.eta": doc } },
+  );
+  if (written.modifiedCount !== 1) return { updated: false, reason: "state_changed" };
+  emitToUser(id(order.user), "etaUpdated", { orderId: id(order._id), shopOrderId: id(shopOrder._id), eta: doc });
+  return { updated: true, reason: "updated", eta: doc };
+};
+
 /* ------------------------------------------------------------------ */
 /* Recovery                                                            */
 /* ------------------------------------------------------------------ */

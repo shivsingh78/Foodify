@@ -3,7 +3,8 @@ import scooter from "../assets/scooter.png"
 import home from "../assets/home.png"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { MapContainer,Marker,Polyline,Popup,TileLayer } from 'react-leaflet'
+import { MapTiles, MapKeyNotice } from './MapTiles'
+import { MapContainer,Marker,Polyline,Popup } from 'react-leaflet'
 
 const deliveryBoyIcon = new L.Icon({
           iconUrl:scooter,
@@ -39,10 +40,7 @@ function DeliveryBoyTracking({data}) {
       center={center}
       zoom={16}
       >
-         <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright"></a> '
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+         <MapTiles />
             <Marker position={[deliveryBoyLat,deliveryBoyLon]} icon={deliveryBoyIcon}>
               <Popup>Delivery Boy </Popup>
 
@@ -54,7 +52,7 @@ function DeliveryBoyTracking({data}) {
             <Polyline positions={path} color='blue' weight={4} />
 
       </MapContainer>
-     
+      <MapKeyNotice />
     </div>
   )
 }

@@ -11,6 +11,8 @@ export const NOTIFICATION_TYPES = [
   "application_approved",
   "application_rejected",
   "application_needs_info",
+  "order_delayed",
+  "incident_escalated",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

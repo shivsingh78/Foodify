@@ -77,6 +77,13 @@ describe("frontend static serving", () => {
     expect(res.text).toMatch(/^window\.__FOODIFY_CONFIG__ = Object\.freeze\(\{.*\}\);\n$/);
   });
 
+  it("serves the browser map key but not the server-side Geoapify key", async () => {
+    const res = await request(spa).get("/runtime-config.js");
+    expect(res.text).toContain('"VITE_GEOAPIFY_MAPS_API_KEY":"test-browser-map-key"');
+    expect(res.text).not.toContain(process.env.GEOAPIFY_API_KEY as string);
+    expect(res.text).not.toContain('"GEOAPIFY_API_KEY"');
+  });
+
   it("does not leak secrets or arbitrary env vars through runtime config", async () => {
     const res = await request(spa).get("/runtime-config.js");
     for (const secret of [
@@ -128,6 +135,7 @@ describe("public runtime config builder", () => {
     VITE_RAZORPAY_KEY_ID: undefined,
     FIREBASE_PROJECT_ID: undefined,
     RAZORPAY_KEY_ID: undefined,
+    VITE_GEOAPIFY_MAPS_API_KEY: undefined,
   };
 
   it("emits only the four allowlisted keys, omitting unset ones", () => {
@@ -140,6 +148,12 @@ describe("public runtime config builder", () => {
       ...({ JWT_SECRET: "s", FIREBASE_PRIVATE_KEY: "pk" } as object),
     });
     expect(cfg).toEqual({ VITE_FIREBASE_APIKEY: "web-key", VITE_FIREBASE_PROJECT_ID: "proj", VITE_RAZORPAY_KEY_ID: "rzp_live_x" });
+  });
+
+  it("exposes only the dedicated map key, never the server-side GEOAPIFY_API_KEY", () => {
+    const cfg = buildPublicConfig({ ...base, VITE_GEOAPIFY_MAPS_API_KEY: "browser-map-key", ...({ GEOAPIFY_API_KEY: "server-secret" } as object) });
+    expect(cfg).toEqual({ VITE_GEOAPIFY_MAPS_API_KEY: "browser-map-key" });
+    expect(JSON.stringify(buildPublicConfig({ ...base, ...({ GEOAPIFY_API_KEY: "server-secret" } as object) }))).toBe("{}");
   });
 
   it("serializes safely for embedding in a script", () => {

@@ -36,7 +36,7 @@ export interface IShopOrder {
 export interface IEta {
   predictedAt: Date;
   /** What triggered this estimate. */
-  basis: "assignment" | "partner_moved" | "pickup";
+  basis: "assignment" | "partner_moved" | "pickup" | "delay_recovery";
   /** Estimated time the partner reaches the restaurant. */
   partnerArrivalAt: Date | null;
   /** Estimated time the order is collected from the restaurant. */
@@ -75,7 +75,7 @@ export type OrderDocument = HydratedDocument<IOrder>;
 const etaSchema = new mongoose.Schema(
   {
     predictedAt: Date,
-    basis: { type: String, enum: ["assignment", "partner_moved", "pickup"] },
+    basis: { type: String, enum: ["assignment", "partner_moved", "pickup", "delay_recovery"] },
     partnerArrivalAt: { type: Date, default: null },
     pickupAt: Date,
     deliveryAt: Date,
@@ -146,6 +146,8 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ "shopOrders.owner": 1, createdAt: -1 });
 orderSchema.index({ "shopOrders.shop": 1, createdAt: -1 });
 orderSchema.index({ "shopOrders.status": 1 });
+// Orchestration scan: preparing shop orders past their expected ready time.
+orderSchema.index({ "shopOrders.status": 1, "shopOrders.readyAt": 1 });
 orderSchema.index({ razorpayOrderId: 1 });
 orderSchema.index({ razorpayPaymentId: 1 });
 orderSchema.index(

@@ -6,7 +6,7 @@ import { FaMobileScreenButton } from "react-icons/fa6";
 import { FaCreditCard } from "react-icons/fa";
 import { IoSearchOutline } from "react-icons/io5";
 import { TbCurrentLocation } from "react-icons/tb";
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import "leaflet/dist/leaflet.css"
@@ -18,6 +18,7 @@ import { getErrorMessage, newIdempotencyKey } from '../utils/api';
 import { useRef } from 'react';
 import '../utils/leafletIcons';
 import { geoErrorMessage, geolocationErrorMessage, MIN_SEARCH_LENGTH, reverseGeocode, searchAddresses } from '../utils/geo';
+import { MapKeyNotice, MapTiles } from '../components/MapTiles';
 import { readPublicConfig } from '../runtimeConfig';
 
 function RecenterMap({location}){
@@ -264,10 +265,7 @@ function CheckOut() {
 
               <MapContainer className={"w-full h-full"} center={center} zoom={17} 
                >
-                <TileLayer
-      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    />
+                <MapTiles />
     <RecenterMap location={location}/>
     <ClickToSelect onSelect={(lat,lon)=>selectPoint(lat,lon)} />
     {location.lat != null && location.lon != null && (
@@ -282,6 +280,7 @@ function CheckOut() {
             </div>
 
           </div>
+          <MapKeyNotice />
           {location.lat != null && location.lon != null ? (
             <p className='mt-2 text-xs text-muted' data-testid="selected-location">
               Selected: {address || 'Looking up address…'} · {location.lat.toFixed(5)}, {location.lon.toFixed(5)}

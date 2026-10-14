@@ -9,6 +9,7 @@ export const PUBLIC_CONFIG_KEYS = [
   'VITE_FIREBASE_PROJECT_ID',
   'VITE_FIREBASE_AUTH_DOMAIN',
   'VITE_RAZORPAY_KEY_ID',
+  'VITE_GEOAPIFY_MAPS_API_KEY',
 ]
 
 export const readPublicConfig = (
