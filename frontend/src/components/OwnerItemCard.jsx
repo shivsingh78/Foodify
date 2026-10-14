@@ -12,7 +12,7 @@ function OwnerItemCard({data}) {
      const dispatch = useDispatch()
      const handleDelete= async () => {
           try {
-               const result = await axios.get(`${serverUrl}/api/item/delete/${data._id}`,{withCredentials:true})
+               const result = await axios.delete(`${serverUrl}/api/item/delete/${data._id}`,{withCredentials:true})
                dispatch(setMyShopData(result.data))
 
           } catch (error) {
@@ -22,25 +22,25 @@ function OwnerItemCard({data}) {
           
      }
   return (
-    <div className='flex bg-white rounded-lg shadow-md overflow-hidden border border-[#ff4d2d] w-full max-w-2xl '>
-     <div className='w-36 flex-shrink-0 bg-gray-50'>
+    <div className='flex bg-white rounded-lg shadow-md overflow-hidden border border-primary w-full max-w-2xl '>
+     <div className='w-36 flex-shrink-0 bg-surface-muted'>
           <img src={data.image} alt={data.name} className='w-full h-full object-cover' />
      </div>
      <div className='flex flex-col justify-between p-3 flex-1 ' >
           <div>
-               <h2 className='text-base font-semibold text-[#ff4d2d]  '>{data.name} </h2>
-          <p><span className='font-medium text-gray-70 '>Category:</span> {data.category} </p>
-          <p><span className='font-medium text-gray-70 '>Food Type:</span> {data.foodType} </p></div>
+               <h2 className='text-base font-semibold text-primary  '>{data.name} </h2>
+          <p><span className='font-medium text-ink '>Category:</span> {data.category} </p>
+          <p><span className='font-medium text-ink '>Food Type:</span> {data.foodType} </p></div>
 
           <div className='flex items-center justify-between '>
-               <div className='text-[#ff4d2d]   font-bold'>Price: {data.price} </div>
+               <div className='text-primary   font-bold'>Price: {data.price} </div>
 
                <div className='flex items-center  gap-2 '>
-                    <div className='p-2 rounded-full hover:bg-[#ff4d2d]/10 text-[#ff4d2d] cursor-pointer  ' onClick={()=>navigate(`/edit-item/${data._id}`)} >
+                    <div className='p-2 rounded-full hover:bg-primary/10 text-primary cursor-pointer  ' onClick={()=>navigate(`/edit-item/${data._id}`)} >
                           <FaPen size={16} />
 
                     </div>
-                    <div className='p-2 rounded-full hover:bg-[#ff4d2d]/10 text-[#ff4d2d] cursor-pointer '  onClick={handleDelete} >
+                    <div className='p-2 rounded-full hover:bg-primary/10 text-primary cursor-pointer '  onClick={handleDelete} >
                           <FaTrashAlt size={16} />
                          
 

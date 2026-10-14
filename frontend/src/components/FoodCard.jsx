@@ -18,7 +18,7 @@ function FoodCard({ data }) {
           const stars = []
           for (let i = 0; i < 5; i++) {
                stars.push(
-                    (i < rating) ? (<FaStar className='text-yellow-500 text-lg ' />) : (< FaRegStar className='text-yellow-500 text-lg ' />)
+                    (i < rating) ? (<FaStar className='text-accent text-lg ' />) : (< FaRegStar className='text-accent text-lg ' />)
                )
           }
           return stars
@@ -36,36 +36,38 @@ function FoodCard({ data }) {
           }
      }
      return (
-          <div className='w-[250px] rounded-2xl border-2 border-[#ff4d2d] bg-white shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col '>
+          <div className='w-[250px] card overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col '>
                <div className=' relative w-full h-[170px] flex justify-center items-center bg-white '>
                     <div className="absolute top-3 right-3 bg-white rounded-full p-1 shadow ">
-                         {data.foodType === "veg" ? <FaLeaf className='text-green-600 text-lg ' /> : <FaDrumstickBite className='text-red-600 text-lg ' />}
+                         {data.foodType === "veg" ? <FaLeaf className='text-success text-lg ' /> : <FaDrumstickBite className='text-danger text-lg ' />}
                     </div>
-                    <img src={data.image} alt="data.name" className='w-full h-full object-cover transition-transform duration-300 hover:scale-105 ' />
+                    <img src={data.image} alt={data.name} className='w-full h-full object-cover transition-transform duration-300 hover:scale-105 ' />
+                    {data.isAvailable === false && (
+                         <div className='absolute inset-0 flex items-center justify-center bg-ink/60 text-sm font-semibold text-white'>Currently unavailable</div>
+                    )}
                </div>
 
                <div className='flex-l flex flex-col p-4 '>
-                    <h1 className='font-semibold text-gray-900 text-base truncate '> {data.name} </h1>
+                    <h1 className='font-semibold text-ink text-base truncate '> {data.name} </h1>
                     <div className='flex items-center gap-1 mt-1 '>
                          {renderStars(data.rating?.average || 0)}
-                         <span className="text-xs text-gray-500"> {data.rating?.count || 0} </span>
+                         <span className="text-xs text-muted"> {data.rating?.count || 0} </span>
                     </div>
                </div>
 
                <div className='flex items-center justify-between mt-auto p-3 '>
-                    <span className=' font-bold text-gray-900 text-lg '>
+                    <span className=' font-bold text-ink text-lg '>
                          ₹{data.price}
                     </span>
                     <div className="flex items-center border rounded-full overflow-hidden shadow-sm ">
-                         <button className='px-2 py-1 hover:bg-gray-100 transition '>
-                              <FaMinus size={12} onClick={handleDecrease} />
-
+                         <button className='px-2 py-1 hover:bg-surface-muted transition ' onClick={handleDecrease} aria-label='Decrease quantity' disabled={data.isAvailable === false}>
+                              <FaMinus size={12} />
                          </button>
                          <span>{quantity} </span>
-                         <button className='px-2 py-1 hover:bg-gray-100 transition '>
-                              <FaPlus size={12} onClick={handleIncrease} />
+                         <button className='px-2 py-1 hover:bg-surface-muted transition ' onClick={handleIncrease} aria-label='Increase quantity' disabled={data.isAvailable === false}>
+                              <FaPlus size={12} />
                          </button>
-                         <button className={`${cartItems.some(i=>i.id==data._id)? "bg-gray-800": "bg-[#ff4d2d]"} text-white px-3 py-2 transition-colors`}   onClick={()=>{quantity>0 ? dispatch(addToCart({
+                         <button className={`${cartItems.some(i=>i.id==data._id)? "bg-ink": "bg-primary"} text-white px-3 py-2 transition-colors`} aria-label='Add to cart' disabled={data.isAvailable === false}  onClick={()=>{quantity>0 ? dispatch(addToCart({
                                    id: data._id,
                                    name: data.name,
                                    price: data.price,

@@ -27,7 +27,7 @@ function Shop() {
 handleShop()
   },[shopId])
   return (
-    <div className='min-h-screen bg-gray-50 '>
+    <div className='min-h-screen bg-surface-muted '>
       <button className='absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/50 hover:bg-black/70 text-white px-3 py-2 rounded-full shadow transition cursor-pointer' onClick={()=>navigate("/")} >
       < IoIosArrowRoundBack size={20} />
       <span>Back</span>
@@ -50,7 +50,7 @@ handleShop()
             </div>
           </div>
           <div className="max-w-7xl mx-auto px-6 py-10 ">
-            <h2 className="flex items-center justify-center gap-3 text-3xl font-bold mb-10 text-gray-800 ">
+            <h2 className="flex items-center justify-center gap-3 text-3xl font-bold mb-10 text-ink ">
               <FaUtensils color='red'/> Our Menu
             </h2>
             {items.length > 0 ? (
@@ -59,7 +59,7 @@ handleShop()
                   <FoodCard data={item}/>
                 ))}
               </div>
-            ):(<p className='text-center text-gray-500 text-lg '>No items Available</p> )}
+            ):(<p className='text-center text-muted text-lg '>No items Available</p> )}
           </div>
 
 

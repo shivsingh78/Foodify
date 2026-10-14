@@ -1,3 +1,4 @@
+import { useSocket, useSocketEvent } from '../utils/socket'
 import React from 'react'
 import Nav from './Nav'
 import { useSelector } from 'react-redux'
@@ -11,7 +12,8 @@ import ClipLoader from 'react-spinners/ClipLoader'
 
 
 function DelieveryBoy() {
-  const {userData,socket}=useSelector(state=>state.user)
+  const {userData}=useSelector(state=>state.user)
+  const socket=useSocket()
   const [availableAssignments,setAvailableAssignments]=useState(null)
   const [currentOrder,setCurrentOrder]=useState()
   const [showOtpBox,setShowOtpBox]=useState(false)
@@ -65,14 +67,24 @@ function DelieveryBoy() {
 
   const acceptOrder = async (assignmentId) => {
     try {
-      const result = await axios.get(`${serverUrl}/api/order/accept-order/${assignmentId}`,{withCredentials:true})
+      await axios.post(`${serverUrl}/api/order/accept-order/${assignmentId}`,{},{withCredentials:true})
       await getCurrentOrder()
       
     } catch (error) {
+      // Offer expired or was taken: the server decides; reload the real list.
       console.log(error)
-      
+      await getAssignments()
     }
     
+  }
+
+  const declineOrder = async (offerId) => {
+    try {
+      await axios.post(`${serverUrl}/api/order/decline-offer/${offerId}`,{},{withCredentials:true})
+    } catch (error) {
+      console.log(error)
+    }
+    setAvailableAssignments(prev=>(prev ?? []).filter(a=>a.offerId!==offerId))
   }
 
   const sendOtp = async ()=> {
@@ -131,47 +143,35 @@ function DelieveryBoy() {
 
   
   useEffect(()=>{
-    let watchId
-    if(!socket || userData.role !== "deliveryBoy") return 
-    if(navigator.geolocation){
-      watchId=navigator.geolocation.watchPosition((position)=>{
+    if(!socket || userData.role !== "deliveryBoy" || !navigator.geolocation) return
+    const watchId=navigator.geolocation.watchPosition(
+      (position)=>{
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         setDeliveryBoyLocation({lat:latitude,lon:longitude})
-        socket.emit('updateLocation',{
-          latitude,
-          longitude,
-          userId:userData._id
-        })
-      }),
-      (error)=>{
-        console.log(error);
-        
+        socket.emit('updateLocation',{latitude,longitude})
       },
-      {
-        enableHighAccuracy:true
-      }
-    }
-    return ()=>{
-      if(watchId) navigator.geolocation.clearWatch(watchId)
-    }
-
+      (error)=>console.error('Unable to read location',error),
+      {enableHighAccuracy:true}
+    )
+    return ()=> navigator.geolocation.clearWatch(watchId)
   },[socket])
+
   
   
 
-  useEffect(()=>{
-    socket?.on('newAssignment',(data)=>{
-      if(data.sentTo == userData._id){
-        setAvailableAssignments(prev=>[...prev,data])
-      }
-    })
-
-    return ()=>{
-      socket.off('newAssignment')
+  useSocketEvent('newAssignment',(data)=>{
+    if(data.sentTo == userData._id){
+      setAvailableAssignments(prev=>[...(prev ?? []).filter(a=>a.offerId!==data.offerId),data])
     }
-
-  },[socket])
+  })
+  // The server is the source of truth for expiry; the UI only reflects what it is told.
+  useSocketEvent('offerExpired',({offerId})=>{
+    setAvailableAssignments(prev=>(prev ?? []).filter(a=>a.offerId!==offerId))
+  })
+  useSocketEvent('assignmentCancelled',()=>{
+    getCurrentOrder()
+  })
 
 
 
@@ -183,41 +183,41 @@ function DelieveryBoy() {
     
   },[userData])
   return (
-    <div className='w-full min-h-screen bg-[#fff9f6] flex flex-col items-center overflow-y-auto '>
+    <div className='w-full min-h-screen bg-background flex flex-col items-center overflow-y-auto '>
       <Nav/>
       <div className="w-full max-w-[800px] flex flex-col gap-5 items-center ">
-        <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-orange-100 text-center gap-2">
-          <h1 className="text-xl font-bold text-[#ff4d2d] ">Welcome, {userData.fullName }</h1>
-          <p className=' text-[#36302f]'><span className="font-semibold text-[#ff4d2d] ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold text-[#ff4d2d]">Longitude </span>
+        <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-primary-soft text-center gap-2">
+          <h1 className="text-xl font-bold text-primary ">Welcome, {userData.fullName }</h1>
+          <p className=' text-ink'><span className="font-semibold text-primary ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold text-primary">Longitude </span>
           {deliveryBoyLocation?.lon}
           </p>
         </div>
 
        
 
-        <div className="bg-white rounded-2xl shadow-md p-5 w-[90%] mb-6 border border-orange-100  ">
-          <h1 className="text-lg font-bold mb-3 text-[#ff4d2d]  ">Today Deliveries</h1>
+        <div className="bg-white rounded-2xl shadow-md p-5 w-[90%] mb-6 border border-primary-soft  ">
+          <h1 className="text-lg font-bold mb-3 text-primary  ">Today Deliveries</h1>
           <ResponsiveContainer width="100%" height={200} >
             <BarChart data={todayDeliveries} >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" tickFormatter={(h)=>`${h}:00`} />
                 <YAxis allowDecimals={false} />
                 <Tooltip formatter={(value=>[value,"orders"])} labelFormatter={label=>`${label}:00`} />
-                  <Bar dataKey="count" fill='#ff4d2d' />
+                  <Bar dataKey="count" fill='var(--color-primary)' />
 
             </BarChart>
 
           </ResponsiveContainer>
 
           <div className="max-w-sm mx-auto mt-6 p-6 bg-white rounded-2xl shadow-lg text-center ">
-            <h1 className="text-xl font-semibold text-gray-800 mb-2  ">Today's Earning </h1>
-            <span className="text-3xl font-bold text-green-600  ">₹{totalEarning} </span>
+            <h1 className="text-xl font-semibold text-ink mb-2  ">Today's Earning </h1>
+            <span className="text-3xl font-bold text-success  ">₹{totalEarning} </span>
           </div>
           
 
         </div>
 
-       {!currentOrder &&  <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border  border-orange-100">
+       {!currentOrder &&  <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border  border-primary-soft">
           <h1 className="text-lg font-bold mb-4 flex items-center gap-2 ">Available Orders </h1>
 
           <div className='space-y-4 '>
@@ -226,28 +226,34 @@ function DelieveryBoy() {
                 <div className='border rounded-lg p-4 flex justify-between items-center  ' key={index}>
                   <div>
                     <p className='text-sm font-semibold'>{a?.shopName} </p>
-                    <p className='text-sm text-gray-500 '><span className='font-semibold '>Delivery Address: </span>{a?.deliveryAddress.text} </p>
-                    <p className='text-xs text-gray-400 '>{a.items.length} items | ₹{a.subtotal} </p>
+                    <p className='text-sm text-muted '><span className='font-semibold '>Delivery Address: </span>{a?.deliveryAddress.text} </p>
+                    <p className='text-xs text-muted '>{a.items.length} items | ₹{a.subtotal} </p>
                   </div>
-                  <button className='bg-orange-500 text-white px-4 py-1 rounded-lg text-sm hover:bg-orange-600 cursor-pointer '  onClick={()=>acceptOrder(a.assignmentId)} >
+                  <div className='flex flex-col gap-2 items-end'>
+                  <button className='bg-primary text-white px-4 py-1 rounded-lg text-sm hover:bg-primary-hover cursor-pointer '  onClick={()=>acceptOrder(a.assignmentId)} >
                     Accept
                     </button>
+                  <button className='border border-line text-muted px-4 py-1 rounded-lg text-sm hover:bg-surface-muted cursor-pointer ' onClick={()=>declineOrder(a.offerId)}>
+                    Decline
+                  </button>
+                  {a.expiresAt && <span className='text-xs text-muted'>Offer valid until {new Date(a.expiresAt).toLocaleTimeString()}</span>}
+                  </div>
                    
                 </div>
 
               )) 
-               ):( <p className='text-gray-400 text-sm '>No Available Orders </p> ) }
+               ):( <p className='text-muted text-sm '>No Available Orders </p> ) }
 
           </div>
         </div>}
 
         {currentOrder && 
-        <div className='bg-white rounded-2xl p-5 shadow-md w-[90%] border border-orange-100 '>
+        <div className='bg-white rounded-2xl p-5 shadow-md w-[90%] border border-primary-soft '>
           <h2 className='text-lg font-bold mb-3 '> 📦 Current Order </h2>
           <div className='border rounded-lg p-4 mb-3 '>
             <p className="font-semibold text-sm ">{currentOrder?.shopOrder.shop.name } </p>
-            <p className="text-sm text-gray-500">{currentOrder?.deliveryAddress.text } </p>
-            <p className="text-xs text-gray-400">{currentOrder?.shopOrder.shopOrderItems.length } items | ₹{currentOrder.shopOrder.subtotal} </p>
+            <p className="text-sm text-muted">{currentOrder?.deliveryAddress.text } </p>
+            <p className="text-xs text-muted">{currentOrder?.shopOrder.shopOrderItems.length } items | ₹{currentOrder.shopOrder.subtotal} </p>
           </div>
           <DeliveryBoyTracking data={
             {
@@ -264,17 +270,17 @@ function DelieveryBoy() {
             }
           }/>
 
-          {!showOtpBox ? (<button className='mt-4 w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition-all duration-200 cursor-pointer' onClick={sendOtp} disabled={loading}>
+          {!showOtpBox ? (<button className='mt-4 w-full bg-success text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-success/90 active:scale-95 transition-all duration-200 cursor-pointer' onClick={sendOtp} disabled={loading}>
            {loading ? <ClipLoader size={20} color='white' /> : "Mark As Delivered"}
           </button>)
           :
-          (<div className='t-4 p-4 border rounded-xl bg-gray-50 '>
-            <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-orange-500 '>{currentOrder.user.fullName}</span> </p>
+          (<div className='t-4 p-4 border rounded-xl bg-surface-muted '>
+            <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-primary '>{currentOrder.user.fullName}</span> </p>
             <input type="text" className='w-full  border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400 ' placeholder='Enter OTP'  onChange={(e)=>setOtp(e.target.value)} value={otp}/>
 
-            {message && <p className='text-center text-green-400 ' >{message} </p> }
+            {message && <p className='text-center text-success ' >{message} </p> }
            
-            <button className='w-full bg-orange-500 text-white py-2 rounded-lg font-semibold hover:bg-orange-600 transition-all cursor-pointer' onClick={verifyOtp}>Submit OTP </button>
+            <button className='w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-hover transition-all cursor-pointer' onClick={verifyOtp}>Submit OTP </button>
             
 
           </div> )}

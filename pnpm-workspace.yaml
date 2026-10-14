@@ -5,4 +5,5 @@ packages:
 allowBuilds:
   '@firebase/util': false
   esbuild: false
+  mongodb-memory-server: false
   protobufjs: false

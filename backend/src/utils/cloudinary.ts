@@ -1,32 +1,56 @@
-import { v2 as cloudinary } from 'cloudinary'   
-import fs from "fs" 
+import { v2 as cloudinary } from "cloudinary";
+import { unlink } from "node:fs/promises";
+import { env } from "../config/env.js";
+import { AppError } from "./AppError.js";
 
-const uploadOnCloudinary = async (file) => {
-  console.log("from cloudinary ", process.env.CLOUDINARY_CLOUD_NAME);
-  
-  cloudinary.config({ 
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-    api_key: process.env.CLOUDINARY_API_KEY, 
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
+let configured = false;
 
-  try {
-    const result = await cloudinary.uploader.upload(file, {
-      folder: "food-items",      // optional folder
-      use_filename: true,        // keep original filename
-      unique_filename: true,     // ✅ ensures Cloudinary generates unique public_id
-      overwrite: false,          // ✅ prevents overwriting old image
-      resource_type: "auto"      // supports image/video
-    });
+const removeLocalFile = (path: string) => unlink(path).catch(() => undefined);
 
-    fs.unlinkSync(file); 
-    return result.secure_url;    // this will now be NEW every time
-
-  } catch (error) {
-    fs.unlinkSync(file);
-    console.log("Cloudinary upload error:", error);
-    return null;
+/** Uploads a local temp file to Cloudinary and always removes the temp file. */
+export const uploadOnCloudinary = async (filePath: string): Promise<string> => {
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+    await removeLocalFile(filePath);
+    throw new AppError(503, "Image upload is not configured on the server", "CLOUDINARY_NOT_CONFIGURED");
   }
-}
+  if (!configured) {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+    configured = true;
+  }
+  try {
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "food-items",
+      unique_filename: true,
+      overwrite: false,
+      resource_type: "image",
+    });
+    return result.secure_url;
+  } catch (error) {
+    console.error("Cloudinary upload failed:", error instanceof Error ? error.message : error);
+    throw new AppError(502, "Image upload failed. Please try again.", "UPLOAD_FAILED");
+  } finally {
+    await removeLocalFile(filePath);
+  }
+};
 
-export default uploadOnCloudinary;
+/** Extracts the public id from a Cloudinary delivery URL (folder/name, no extension). */
+const publicIdFromUrl = (url: string): string | null => {
+  const match = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/.exec(url);
+  return match?.[1] ?? null;
+};
+
+/** Best-effort cleanup of a replaced/deleted image; never fails the request. */
+export const deleteFromCloudinary = async (url: string | undefined | null): Promise<void> => {
+  if (!url || !configured || !url.includes("res.cloudinary.com")) return;
+  const publicId = publicIdFromUrl(url);
+  if (!publicId) return;
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.warn("Cloudinary cleanup failed:", error instanceof Error ? error.message : error);
+  }
+};

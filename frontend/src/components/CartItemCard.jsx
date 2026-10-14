@@ -22,24 +22,24 @@ function CartItemCard({ data }) {
                <div className='flex items-center gap-4 '>
                     <img src={data.image} alt={data.name} className='w-20 h-20 object-cover rounded-lg border ' />
                     <div>
-                         <h1 className='font-medium text-gray-800 '>{data.name} </h1>
-                         <p className='text-sm text-gray-500 '>₹{data.price} x {data.quantity} </p>
-                         <p className='font-bold text-gray-900  '>₹{data.price * data.quantity} </p>
+                         <h1 className='font-medium text-ink '>{data.name} </h1>
+                         <p className='text-sm text-muted '>₹{data.price} x {data.quantity} </p>
+                         <p className='font-bold text-ink  '>₹{data.price * data.quantity} </p>
 
                     </div>
                </div>
                {/*right */}
                <div className='flex items-center gap-4 '>
-                    <button className='cursor-pointer p-2 bg-gray-100 rounded-full hover:bg-gray-200 '  onClick={()=>handleDecrease(data.id,data.quantity)}>
+                    <button className='cursor-pointer p-2 bg-surface-muted rounded-full hover:bg-surface-muted '  onClick={()=>handleDecrease(data.id,data.quantity)}>
                          <FaMinus size={12}  />
                         
 
                     </button>
                     <span>{data.quantity} </span>
-                    <button className='cursor-pointer p-2 bg-gray-100 rounded-full hover:bg-gray-200 '  onClick={()=>handleIncrease(data.id,data.quantity)}>
+                    <button className='cursor-pointer p-2 bg-surface-muted rounded-full hover:bg-surface-muted '  onClick={()=>handleIncrease(data.id,data.quantity)}>
                          <FaPlus size={12}  />
                     </button>
-                     <button className='cursor-pointer p-2 bg-red-100 rounded-full text-red-600 hover:bg-red-200 ' onClick={()=>dispatch(removeCartItem(data.id))}>
+                     <button className='cursor-pointer p-2 bg-danger-soft rounded-full text-danger hover:bg-danger-soft ' onClick={()=>dispatch(removeCartItem(data.id))}>
                          <CiTrash size={18}  />
                     </button>
                     

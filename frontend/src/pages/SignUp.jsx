@@ -1,160 +1,103 @@
-import  { useState } from 'react'
-import { FaRegEye } from "react-icons/fa";
-import { FaRegEyeSlash } from "react-icons/fa";
-import ClipLoader from 'react-spinners/ClipLoader';
-import { FcGoogle } from "react-icons/fc";
+import { useState } from 'react'
+import { FcGoogle } from 'react-icons/fc'
+import ClipLoader from 'react-spinners/ClipLoader'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { serverUrl } from '../config';
-import { signInWithGoogle } from '../utils/googleAuth';
-import { useDispatch } from 'react-redux';
-import { setUserData } from '../redux/userSlice';
-import { signUpSchema} from "@foodify/validation";
-
-
+import { useDispatch } from 'react-redux'
+import { signUpSchema, mobileSchema } from '@foodify/validation'
+import { serverUrl } from '../config'
+import { logAuthErrorInDev, signInWithGoogle } from '../utils/googleAuth'
+import { getErrorMessage, getGoogleErrorMessage } from '../utils/api'
+import { setUserData } from '../redux/userSlice'
+import AuthLayout from '../components/ui/AuthLayout'
+import Field from '../components/ui/Field'
+import PasswordInput from '../components/ui/PasswordInput'
 
 function SignUp() {
-  const primaryColor = '#ff4d2d';
-  const bgColor = '#fff9f6';
-  const borderColor = '#ddd'
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [mobile, setMobile] = useState("")
-  const [password, setPassword] = useState("")
-  const [err,setErr]=useState("")
-  const [googleLoading,setGoogleLoading]=useState(false)
   const dispatch = useDispatch()
+  const [form, setForm] = useState({ fullName: '', email: '', mobile: '', password: '' })
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
-  const result = signUpSchema.safeParse({
-  fullName,
-  email,
-  password,
-  mobile
-})
+  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
-if(!result.success){
-  setErr(result.error.issues[0]?.message || "Invalid signup data");
-}
-
-  const handleSignUp = async () => {
+  const handleSignUp = async (e) => {
+    e.preventDefault()
+    const parsed = signUpSchema.safeParse(form)
+    if (!parsed.success) return setErr(parsed.error.issues[0]?.message ?? 'Invalid details')
+    setLoading(true)
     try {
-      setLoading(true)
-      const result = await axios.post(`${serverUrl}/api/auth/signup`, {
-        fullName,
-        email,
-        password,
-        mobile,
-      }, { withCredentials: true })
-      dispatch(setUserData(result.data))
-      setErr("")
+      const { data } = await axios.post(`${serverUrl}/api/auth/signup`, parsed.data, { withCredentials: true })
+      setErr('')
+      dispatch(setUserData(data))
     } catch (error) {
-     setErr(error?.response?.data?.message)
-
+      setErr(getErrorMessage(error))
     } finally {
       setLoading(false)
     }
-
   }
 
   const handleGoogleAuth = async () => {
+    if (googleLoading) return
+    // Mobile is optional for Google; when given it must still be valid.
+    const mobile = form.mobile.trim() ? mobileSchema.safeParse(form.mobile) : { success: true, data: undefined }
+    if (!mobile.success) return setErr('Enter a valid mobile number or leave it empty')
+    setGoogleLoading(true)
     try {
-      if (googleLoading) return
-      setGoogleLoading(true)
-      if (!mobile) {
-        return setErr("mobile number is required")
-      }
       const result = await signInWithGoogle()
       if (!result) return
-
-      const { data } = await axios.post(`${serverUrl}/api/auth/google-signup`, {
-        fullName: result.user.displayName,
-        email: result.user.email,
-        mobile,
-      }, { withCredentials: true })
+      // The server verifies this token and derives name/email from it.
+      const idToken = await result.user.getIdToken()
+      const { data } = await axios.post(
+        `${serverUrl}/api/auth/google-signup`,
+        { idToken, ...(mobile.data && { mobile: mobile.data }) },
+        { withCredentials: true },
+      )
+      setErr('')
       dispatch(setUserData(data))
-      
-
     } catch (error) {
-      setErr(error?.response?.data?.message || (
-        error.code === "auth/popup-blocked"
-          ? "Your browser blocked the Google window. Allow popups for this site and try again."
-          : error.message
-      ))
+      logAuthErrorInDev('google-auth', error)
+      setErr(getGoogleErrorMessage(error))
     } finally {
       setGoogleLoading(false)
     }
-
   }
 
-
   return (
-    <div className='min-h-screen w-full flex items-center justify-center p-4  ' style={{ backgroundColor: bgColor }}>
-      <div className={`bg-white rounded-xl shadow-lg w-full max-w-md p-8 border`} style={{ border: `1px solid ${borderColor}` }} >
-        <h1 className={`text-3xl font-bold mb-2`} style={{ color: primaryColor }} >FoodiFy</h1>
-        <p className='text-gray-600 mb-8  '> Create your account to get started with delicious food deliveries</p>
+    <AuthLayout title="Create your account" subtitle="Get started with delicious food deliveries.">
+      <form onSubmit={handleSignUp} noValidate>
+        <Field label="Full name" placeholder="Your full name" autoComplete="name" value={form.fullName} onChange={update('fullName')} required />
+        <Field label="Email" type="email" placeholder="you@example.com" autoComplete="email" value={form.email} onChange={update('email')} required />
+        <Field label="Mobile" type="tel" placeholder="10-digit mobile number" autoComplete="tel" value={form.mobile} onChange={update('mobile')} required />
+        <Field label="Password">
+          {(id) => <PasswordInput id={id} placeholder="At least 8 characters" autoComplete="new-password" value={form.password} onChange={update('password')} required />}
+        </Field>
 
-        {/* fullName */}
+        {err && <p role="alert" className="alert-error mb-4">{err}</p>}
 
-        <div className='mb-4 '>
-          <label htmlFor="fullName" className='block text-gray-700 font-medium mb-1 '> Full Name </label>
-          <input type="text" className='w-full border rounded-lg px-3 py-2 focus:outline-none  ' placeholder='Enter your Full Name ' style={{ border: `1px solid ${borderColor}` }} onChange={(e) => setFullName(e.target.value)} value={fullName} required />
-        </div>
-        {/* email */}
-
-        <div className='mb-4 '>
-          <label htmlFor="email" className='block text-gray-700 font-medium mb-1 '> Email </label>
-          <input type="email" className='w-full border rounded-lg px-3 py-2 focus:outline-none  ' placeholder='Enter your Email ' style={{ border: `1px solid ${borderColor}` }} onChange={(e) => setEmail(e.target.value)} value={email} required />
-        </div>
-
-        {/* mobile */}
-
-        <div className='mb-4 '>
-          <label htmlFor="mobile" className='block text-gray-700 font-medium mb-1 '> Mobile </label>
-          <input type="text" className='w-full border rounded-lg px-3 py-2 focus:outline-none  ' placeholder='Enter your Mobile Number ' style={{ border: `1px solid ${borderColor}` }} onChange={(e) => setMobile(e.target.value)} value={mobile} required />
-        </div>
-
-        {/* password */}
-
-        <div className='mb-4 '>
-          <label htmlFor="password" className='block text-gray-700 font-medium mb-1 '> Password </label>
-          <div className=' relative'>
-            <input type={`${showPassword ? "text" : "password"}`} className='w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 ' placeholder='Enter your Password ' style={{ border: `1px solid ${borderColor}` }} onChange={(e) => setPassword(e.target.value)} value={password} required />
-            <button className='absolute right-3 top-[14px] text-gray-500 cursor-pointer  ' onClick={() => setShowPassword(prev => !prev)} >{!showPassword ? <FaRegEye /> : <FaRegEyeSlash />}</button>
-          </div>
-        </div>
-
-        {/* role */}
-
-
-        </div>
-        <button className={`w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] text-white hover:bg-[#e64323] cursor-pointer `} onClick={handleSignUp} disabled={loading} >
-          {loading ? (<ClipLoader color="#fff" size={20} />) : ("Sign Up")}
+        <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {loading ? <ClipLoader color="white" size={20} /> : 'Sign up'}
         </button>
-        {err && <p className='text-red-500 text-center my-[10px] '>*{err}</p>
-}
-        <button className='w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-100 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ' onClick={handleGoogleAuth} disabled={googleLoading}>
-          <FcGoogle size={20} />
-          <span>{googleLoading ? "Signing up..." : "Sign up with Google"}</span>
-        </button>
+      </form>
 
-        <p className="text-center mt-6">
-          Already have an account?{" "}
-          <span
-            onClick={() => navigate("/signin")}
-            className="text-[#ff4d2d] cursor-pointer hover:underline"
-          >
-            Sign In
-          </span>
-        </p>
-
-
-
+      <div className="my-4 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
       </div>
 
-   
+      <button type="button" className="btn-secondary w-full" onClick={handleGoogleAuth} disabled={googleLoading}>
+        <FcGoogle size={20} />
+        <span>{googleLoading ? 'Signing up…' : 'Sign up with Google'}</span>
+      </button>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        Already have an account?{' '}
+        <button type="button" onClick={() => navigate('/signin')} className="font-semibold text-primary hover:underline">
+          Sign in
+        </button>
+      </p>
+    </AuthLayout>
   )
 }
 

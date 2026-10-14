@@ -10,10 +10,12 @@ function useGetShopByCity() {
      const {currentCity}=useSelector(state=>state.user)
    
   useEffect(()=>{
+     // The city is unknown until location detection finishes; never request /null.
+     if(!currentCity) return
        const fetchShops=async ()=>{
      try {
           
-          const result=await axios.get(`${serverUrl}/api/shop/get-by-city/${currentCity}`,{withCredentials:true})
+          const result=await axios.get(`${serverUrl}/api/shop/get-by-city/${encodeURIComponent(currentCity)}`,{withCredentials:true})
           dispatch(setShopsInMyCity(result.data))
           
           

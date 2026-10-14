@@ -1,47 +1,32 @@
-import jwt, { JwtPayload } from "jsonwebtoken"
+import { randomUUID } from "node:crypto";
+import jwt, { type JwtPayload } from "jsonwebtoken";
+import { env } from "../config/env.js";
 
-type TokenPurpose = "password_reset";
-type TokenPayload = {
-     userId:string;
-     purpose?:TokenPurpose;
+export type TokenPurpose = "password_reset";
+
+export interface TokenPayload extends JwtPayload {
+  userId: string;
+  purpose?: TokenPurpose;
 }
 
-const genToken = async (userId:string,purpose?:TokenPurpose,expiresIn: jwt.SignOptions["expiresIn"]="7d") => {
-     try {
-          const secret=process.env.JWT_SECRET;
+/** Session tokens carry no `purpose`; special-purpose tokens must be short-lived. */
+export const signSessionToken = (userId: string): string =>
+  jwt.sign({ userId }, env.JWT_SECRET, { expiresIn: "7d" });
 
-          if(!secret){
-               throw new Error("JWT_SECRET is not configured");
-          }
-          const payload: {
-             userId:string;
-             purpose?:TokenPurpose;
-               
-          }={
-               userId,
-          }
+export const signPurposeToken = (
+  userId: string,
+  purpose: TokenPurpose,
+  expiresIn: jwt.SignOptions["expiresIn"],
+): { token: string; tokenId: string } => {
+  const tokenId = randomUUID();
+  const token = jwt.sign({ userId, purpose }, env.JWT_SECRET, { expiresIn, jwtid: tokenId });
+  return { token, tokenId };
+};
 
-          if(purpose) {
-               payload.purpose = purpose;
-          }
-          return jwt.sign(payload,secret,{
-               expiresIn
-          })
-     }
-     catch (error) {
-          console.log(error);
-          
-
-     }
-}
-
-export const verifyToken=(token:string):JwtPayload &TokenPayload =>{
-     const secret = process.env.JWT_SECRET;
-     if(!secret){
-          throw new Error("JWT_SECRET is not configured");
-     }
-
-     return jwt.verify(token,secret) as JwtPayload & TokenPayload;
-}
-
-export default genToken
+export const verifyToken = (token: string): TokenPayload => {
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+  if (typeof decoded === "string" || typeof decoded.userId !== "string") {
+    throw new Error("Malformed token");
+  }
+  return decoded as TokenPayload;
+};

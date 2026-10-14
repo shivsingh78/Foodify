@@ -35,3 +35,20 @@ export const signInWithGoogle = () => {
 
   return googleAuthInProgress;
 };
+
+/**
+ * Development-only diagnostics at the original error boundary, before the error is turned
+ * into a friendly message. Logs the Firebase code/message/stack only; never tokens or cookies.
+ */
+export const logAuthErrorInDev = (context, error) => {
+  if (!import.meta.env.DEV) return
+  console.error(`[auth-debug] ${context}`, {
+    code: error?.code,
+    name: error?.name,
+    message: error?.message,
+    status: error?.response?.status,
+    origin: globalThis.location?.origin,
+    authDomain: auth.config?.authDomain,
+    stack: error?.stack,
+  })
+}

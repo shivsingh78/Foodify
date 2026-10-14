@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import SignUp from './pages/SignUp'
 import SignIn from './pages/SignIn'
 import ForgotPassword from './pages/ForgotPassword';
 import useGetCurrentUser from './hooks/useGetCurrentUser';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import Home from './pages/Home';
 import useGetCity from './hooks/useGetCity';
 import CreateEditShop from './pages/CreateEditShop';
@@ -21,15 +21,22 @@ import useGetMyOrders from './hooks/useGetMyOrders';
 import useUpdateLocation from './hooks/useUpdateLocation';
 import TrackOrderPage from './pages/TrackOrderPage';
 import Shop from './pages/Shop';
-import { io } from 'socket.io-client';
-import { setSocket } from './redux/userSlice';
-import { serverUrl } from './config';
+import BecomeOwner from './pages/BecomeOwner';
+import BecomeDeliveryPartner from './pages/BecomeDeliveryPartner';
+import MyApplications from './pages/MyApplications';
+import AdminApplications from './pages/AdminApplications';
+import { connectSocket, disconnectSocket } from './utils/socket';
 
 
 function App() {
   const {userData,authLoading} = useSelector(state=>state.user);
   
-  const dispatch = useDispatch()
+  const location = useLocation()
+  // After signing in, return to the page that required it (e.g. an application form).
+  const afterLogin = location.state?.from ?? '/'
+  const signinFor = <Navigate to='/signin' state={{from:location.pathname}} />
+  const adminOnly = (el) => !userData ? signinFor : userData.role==='admin' ? el : <Navigate to='/' />
+  const customerOnly = (el) => !userData ? signinFor : userData.role==='user' ? el : <Navigate to='/' />
   useGetMyShop()
   useGetShopByCity() 
   useGetItemsByCity()
@@ -38,31 +45,23 @@ function App() {
   useGetCity()
   useGetMyOrders()
 
+  // One socket per signed-in user; the server authenticates it from the session cookie.
   useEffect(()=>{
-  const socketInstance = io(serverUrl,{withCredentials:true})
-  dispatch(setSocket(socketInstance))
-  socketInstance.on('connect',()=>{
-    if(userData){
-      socketInstance.emit('identity',{userId:userData._id})
-    }
-    
-  })
-  return () => {
-    socketInstance.disconnect()
-
-  }
+    if(!userData?._id) return
+    connectSocket()
+    return () => disconnectSocket()
   },[userData?._id])
 
   if(authLoading)  return (
     <div className="flex h-screen w-screen items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
     </div>
   );
 
   return (
    <Routes>
-    <Route path='/signup' element={!userData?<SignUp/>: <Navigate to={"/"} /> } />
-     <Route path='/signin' element={!userData?<SignIn/>: <Navigate to={"/"} />} />
+    <Route path='/signup' element={!userData?<SignUp/>: <Navigate to={afterLogin} /> } />
+     <Route path='/signin' element={!userData?<SignIn/>: <Navigate to={afterLogin} />} />
      <Route path='/forgot-password' element={!userData?<ForgotPassword/>:<Navigate to={"/"} />} />
      <Route path='/' element={userData?<Home/>:<Navigate to={"/signin"} />} />
      <Route path='/create-edit-shop' element={userData?<CreateEditShop/>:<Navigate to={"/signin"} />} />
@@ -74,6 +73,10 @@ function App() {
      <Route path='/my-orders' element={userData?<MyOrders/>:<Navigate to={"/signin"} />} />
      <Route path='/track-order/:orderId' element={userData?<TrackOrderPage/>:<Navigate to={"/signin"}/>} />
      <Route path='/shop/:shopId' element={userData?<Shop/>:<Navigate to={"/signin" }/> } />
+     <Route path='/become-owner' element={customerOnly(<BecomeOwner/>)} />
+     <Route path='/become-delivery-partner' element={customerOnly(<BecomeDeliveryPartner/>)} />
+     <Route path='/my-applications' element={userData?<MyApplications/>:signinFor} />
+     <Route path='/admin/applications' element={adminOnly(<AdminApplications/>)} />
    </Routes>
    
   )

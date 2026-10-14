@@ -1,17 +1,34 @@
-import express from 'express'
-import { googleSignIn, googleSignUp, resetPassword, sendOtp, signIn, signOut, signUp, verifyOtp } from '../controllers/auth.controller.js'
-import { validate } from '../middlewares/validate.js'
-import { googleSignInSchema, googleSignUpSchema, resetPasswordSchema, sendOtpSchema, signInSchema, signUpSchema, verifyOtpSchema } from '@foodify/validation'
+import express from "express";
+import {
+  googleAuthSchema,
+  resetPasswordSchema,
+  sendOtpSchema,
+  signInSchema,
+  signUpSchema,
+  verifyOtpSchema,
+} from "@foodify/validation";
+import {
+  googleAuth,
+  resetPassword,
+  sendOtp,
+  signIn,
+  signOut,
+  signUp,
+  verifyOtp,
+} from "../controllers/auth.controller.js";
+import { limits } from "../middlewares/rateLimit.js";
+import { validate } from "../middlewares/validate.js";
 
-const authRouter = express.Router()
+const authRouter = express.Router();
 
-authRouter.post("/signup", validate(signUpSchema) , signUp)
-authRouter.post("/signin",validate(signInSchema),signIn)
-authRouter.get("/signout",signOut)
-authRouter.post("/send-otp",validate(sendOtpSchema),sendOtp)
-authRouter.post("/verify-otp",validate(verifyOtpSchema),verifyOtp)
-authRouter.post("/reset-password",validate(resetPasswordSchema),resetPassword)
-authRouter.post("/google-signup",validate(googleSignUpSchema),googleSignUp)
-authRouter.post("/google-signin",validate(googleSignInSchema),googleSignIn)
+authRouter.post("/signup", limits.auth, validate(signUpSchema), signUp);
+authRouter.post("/signin", limits.auth, validate(signInSchema), signIn);
+authRouter.get("/signout", signOut);
+authRouter.post("/send-otp", limits.otpSend, validate(sendOtpSchema), sendOtp);
+authRouter.post("/verify-otp", limits.otpVerify, validate(verifyOtpSchema), verifyOtp);
+authRouter.post("/reset-password", limits.auth, validate(resetPasswordSchema), resetPassword);
+// Both endpoints are kept for existing clients; they behave identically.
+authRouter.post("/google-signup", limits.auth, validate(googleAuthSchema), googleAuth);
+authRouter.post("/google-signin", limits.auth, validate(googleAuthSchema), googleAuth);
 
-export default authRouter
+export default authRouter;

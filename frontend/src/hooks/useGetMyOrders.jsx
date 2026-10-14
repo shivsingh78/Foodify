@@ -13,7 +13,6 @@ function useGetMyOrders() {
                try {
                     const result = await axios.get(`${serverUrl}/api/order/my-orders`,{withCredentials:true})
                     dispatch(setMyOrders(result.data))
-                    console.log(result.data);
                     
 
                } catch (error) {
@@ -22,8 +21,12 @@ function useGetMyOrders() {
                     
                }
           }
+          if(!userData) return
           fetchOrders()
-     },[userData])
+          // Realtime events are not replayed after a reconnect, so refetch authoritative state.
+          window.addEventListener('foodify:resync',fetchOrders)
+          return () => window.removeEventListener('foodify:resync',fetchOrders)
+     },[userData?._id])
 }
 
 export default useGetMyOrders

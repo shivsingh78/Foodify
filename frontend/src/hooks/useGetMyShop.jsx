@@ -11,8 +11,11 @@ function useGetMyShop() {
    
      const dispatch = useDispatch()
      const {userData}=useSelector(state=>state.user)
+     const isOwner = userData?.role === 'owner'
    
   useEffect(()=>{
+     // /shop/get-my is owner-only; customers, riders and admins must not call it (it would 403).
+     if(!isOwner) return
        const fetchShop=async ()=>{
      try {
          
@@ -23,14 +26,14 @@ function useGetMyShop() {
           
      
      } catch (error) {
-          console.log("Shop fetch error:", error);
+          console.error("Shop fetch error:", error?.response?.status ?? error);
           
             
      }
 }
 fetchShop()
 
-  },[userData])
+  },[isOwner,userData?._id])
 }
 
 

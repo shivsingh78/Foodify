@@ -1,12 +1,17 @@
 {
-  "name": "Foodify",
+  "name": "foodify",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Full-stack food ordering and delivery platform",
   "scripts": {
-    "dev":"pnpm --parallel --filter backend --filter frontend dev"
+    "postinstall": "pnpm --filter @foodify/validation build",
+    "dev": "pnpm --filter @foodify/validation build && pnpm --parallel --filter backend --filter frontend dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm --filter @foodify/validation typecheck && pnpm --filter backend typecheck",
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm --filter frontend lint",
+    "start": "pnpm --filter backend start"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "packageManager": "pnpm@12.6.0"
 }

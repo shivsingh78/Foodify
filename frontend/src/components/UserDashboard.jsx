@@ -6,6 +6,8 @@ import CategoryCard from './CategoryCard';
 import { FaCircleChevronLeft , FaCircleChevronRight } from "react-icons/fa6";
 import FoodCard from './FoodCard';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { serverUrl } from '../config';
 
 function UserDashboard() {
   const {currentCity,shopInMyCity,itemsInMyCity,searchItems}=useSelector(state => state.user)
@@ -17,6 +19,16 @@ function UserDashboard() {
   const [showRightShopButton,setShowRightShopButton]=useState(false)
   const [updatedItemsList,setUpdatedItemsList] = useState([])
   const navigate = useNavigate()
+  const [recommended,setRecommended] = useState([])
+
+  useEffect(()=>{
+    if(!currentCity) return
+    let cancelled=false
+    axios.get(`${serverUrl}/api/item/recommendations`,{params:{city:currentCity,limit:8},withCredentials:true})
+      .then(res=>{ if(!cancelled) setRecommended(res.data) })
+      .catch(()=>{ if(!cancelled) setRecommended([]) })
+    return ()=>{ cancelled=true }
+  },[currentCity])
 
 
 const handleFilterByCategory = (category)=> {
@@ -83,12 +95,12 @@ element.addEventListener("scroll", cateHandler);
 
 
   return (
-    <div className='w-full min-h-screen bg-[#fff9f6] flex flex-col items-center overflow-y-auto '>
+    <div className='w-full min-h-screen bg-background flex flex-col items-center overflow-y-auto '>
      <Nav/>
 
      {searchItems && searchItems.length>0 && (
       <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-white shadow-md rounded-2xl mt-4 ">
-        <h1 className='text-gray-900 text-2xl sm:text-3xl font-semibold border-b border-gray-200 pb-2 '>Search Results </h1>
+        <h1 className='text-ink text-2xl sm:text-3xl font-semibold border-b border-line pb-2 '>Search Results </h1>
         <div className="w-full h-auto flex flex-wrap gap-6 justify-center ">
           {searchItems.map((item)=>(
             <FoodCard data={item} key={item._id}/>
@@ -99,10 +111,10 @@ element.addEventListener("scroll", cateHandler);
      )}
       {/*for category*/}
      <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]  '>
-      <h1 className='text-gray-800 text-2xl sm:text-3xl ' >Inspiration for your first order</h1>
+      <h1 className='text-ink text-2xl sm:text-3xl ' >Inspiration for your first order</h1>
       <div className="w-full relative">
          {/*left button*/}
-         {showLeftCateButton && <button className='absolute left-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(cateScrollRef,"left")} >
+         {showLeftCateButton && <button className='absolute left-0 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary-hover z-10 cursor-pointer'  onClick={()=>scrollHandler(cateScrollRef,"left")} >
          
           <FaCircleChevronLeft/>
       </button> }
@@ -114,7 +126,7 @@ element.addEventListener("scroll", cateHandler);
         )) }
        </div>
        {/*right button*/}
-       {showRightCateButton && <button className='absolute right-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(cateScrollRef,"right")}>
+       {showRightCateButton && <button className='absolute right-0 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary-hover z-10 cursor-pointer'  onClick={()=>scrollHandler(cateScrollRef,"right")}>
         <FaCircleChevronRight/>
        
 
@@ -124,10 +136,10 @@ element.addEventListener("scroll", cateHandler);
      </div>
       {/*for Shop */}
      <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px] '>
-       <h1 className='text-gray-800 text-2xl sm:text-3xl ' > Best Shop in {currentCity} </h1>
+       <h1 className='text-ink text-2xl sm:text-3xl ' > Best Shop in {currentCity} </h1>
         <div className="w-full relative">
          {/*left button*/}
-         {showLeftShopButton && <button className='absolute left-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"left")} >
+         {showLeftShopButton && <button className='absolute left-0 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary-hover z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"left")} >
          
           <FaCircleChevronLeft/>
       </button> }
@@ -139,7 +151,7 @@ element.addEventListener("scroll", cateHandler);
         )) }
        </div>
        {/*right button*/}
-       {showRightShopButton && <button className='absolute right-0 top-1/2 -translate-y-1/2 bg-[#ff4d2d] text-white p-2 rounded-full shadow-lg hover:bg-[#e64528] z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"right")}>
+       {showRightShopButton && <button className='absolute right-0 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary-hover z-10 cursor-pointer'  onClick={()=>scrollHandler(shopScrollRef,"right")}>
         <FaCircleChevronRight/>
        
 
@@ -147,9 +159,22 @@ element.addEventListener("scroll", cateHandler);
       </div>
      </div>
 
+       {recommended.length>0 && (
+         <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px] '>
+           <h1 className='text-ink text-2xl sm:text-3xl ' > Recommended for you </h1>
+           <div className='w-full h-auto flex flex-wrap gap-[20px] justify-center  '>
+             {recommended.map((item)=>(
+               <div key={item._id} className='flex flex-col items-center gap-1'>
+                 <FoodCard data={item}/>
+                 <span className='text-xs text-muted'>{item.reason}</span>
+               </div>
+             ))}
+           </div>
+         </div>
+       )}
        {/*for Shop Items */}
        <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px] '>
-         <h1 className='text-gray-800 text-2xl sm:text-3xl ' > Suggested Food Items </h1>
+         <h1 className='text-ink text-2xl sm:text-3xl ' > Suggested Food Items </h1>
 
          <div className='w-full h-auto flex flex-wrap gap-[20px] justify-center  '>
           {updatedItemsList?.map((item,index)=>(
