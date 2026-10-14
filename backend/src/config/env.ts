@@ -18,6 +18,15 @@ const envSchema = z
     FRONTEND_URL: optional,
     // Built SPA to serve; defaults to ../frontend/dist in production when it exists.
     FRONTEND_DIST: optional,
+    // Enforce (instead of report-only) the Content-Security-Policy applied to the SPA.
+    CSP_ENFORCE: z.enum(["true", "false"]).default("false"),
+
+    // Public browser config served at /runtime-config.js. Not secrets: Firebase web config and the
+    // Razorpay key id are visible in any browser. Project id / key id fall back to the server-side ones.
+    VITE_FIREBASE_APIKEY: optional,
+    VITE_FIREBASE_PROJECT_ID: optional,
+    VITE_FIREBASE_AUTH_DOMAIN: optional,
+    VITE_RAZORPAY_KEY_ID: optional,
     MONGODB_URL: z.string().min(1, "MONGODB_URL is required"),
     JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
     REDIS_URL: optional,

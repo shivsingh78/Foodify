@@ -8,7 +8,7 @@ export const buildFirebaseConfig = (env) => {
   const projectId = env.VITE_FIREBASE_PROJECT_ID
   if (!apiKey || !projectId) {
     throw new Error(
-      'Firebase is not configured: set VITE_FIREBASE_APIKEY and VITE_FIREBASE_PROJECT_ID in frontend/.env (see .env.example).',
+      'Firebase is not configured: set VITE_FIREBASE_APIKEY and VITE_FIREBASE_PROJECT_ID in the server runtime environment (served via /runtime-config.js) or, for local development, in frontend/.env (see .env.example).',
     )
   }
   const config = {

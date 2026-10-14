@@ -7,6 +7,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import helmet from "helmet";
 import morgan from "morgan";
 import { env, isProduction } from "./config/env.js";
+import { buildPublicConfig, renderRuntimeConfig } from "./config/publicConfig.js";
 import { cacheStats } from "./services/cache.service.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error.js";
 import { limits } from "./middlewares/rateLimit.js";
@@ -27,6 +28,21 @@ export const allowedOrigins: string[] = [
     ? []
     : ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]),
 ].filter((origin): origin is string => Boolean(origin));
+
+// Third parties the SPA uses: Razorpay checkout, Firebase/Google sign-in, OpenStreetMap tiles, Cloudinary images.
+const spaCspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "https://checkout.razorpay.com", "https://apis.google.com"],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  imgSrc: ["'self'", "data:", "blob:", "https:"],
+  fontSrc: ["'self'", "data:"],
+  connectSrc: ["'self'", "wss:", "https://*.googleapis.com", "https://*.firebaseapp.com", "https://api.razorpay.com", "https://lumberjack.razorpay.com"],
+  frameSrc: ["https://api.razorpay.com", "https://checkout.razorpay.com", "https://*.firebaseapp.com", "https://accounts.google.com"],
+  formAction: ["'self'", "https://api.razorpay.com"],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  frameAncestors: ["'self'"],
+};
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -60,13 +76,19 @@ export const createApp = (options: { frontendDir?: string } = {}): Express => {
 
   app.use(
     helmet({
-      // The SPA loads Razorpay, OpenStreetMap tiles and Cloudinary images, which helmet's default
-      // CSP would block, so it is only relaxed when the SPA is served from here.
-      contentSecurityPolicy: frontendDir ? false : undefined,
+      contentSecurityPolicy: false, // applied per path below
       // Firebase Google sign-in uses a popup, which "same-origin" would sever.
       crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     }),
   );
+  // API responses keep helmet's strict default CSP; the SPA needs a policy that allows its third parties.
+  const apiCsp = helmet.contentSecurityPolicy();
+  const spaCsp = helmet.contentSecurityPolicy({
+    useDefaults: false,
+    reportOnly: env.CSP_ENFORCE !== "true",
+    directives: spaCspDirectives,
+  });
+  app.use((req, res, next) => (frontendDir && !req.path.startsWith("/api") ? spaCsp : apiCsp)(req, res, next));
   if (env.NODE_ENV === "development") app.use(morgan("dev"));
 
   app.use(
@@ -104,6 +126,11 @@ export const createApp = (options: { frontendDir?: string } = {}): Express => {
   app.use("/api", notFoundHandler);
 
   if (frontendDir) {
+    // Registered before static files so a stale copy in the build can never shadow it.
+    app.get("/runtime-config.js", (_req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.type("application/javascript").send(renderRuntimeConfig(buildPublicConfig(env)));
+    });
     app.use("/assets", express.static(path.join(frontendDir, "assets"), { immutable: true, maxAge: "1y" }));
     app.use(express.static(frontendDir, { index: false }));
     // History fallback for client-side routes (BrowserRouter): only for page navigations.

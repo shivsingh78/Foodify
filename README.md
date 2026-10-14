@@ -152,14 +152,25 @@ Backend tests download a MongoDB binary on first run (via `mongodb-memory-server
 
 ## Combined deployment (Kuros / Docker)
 
-The root `Dockerfile` builds the shared package, backend and frontend and runs one Express process that serves `/api`, Socket.IO and the built SPA (`frontend/dist`) on `PORT` (default 5000). Unknown `/api/*` paths return a JSON 404; other page navigations fall back to `index.html`. The SPA is served only in production, or when `FRONTEND_DIST` points at a build.
+One container, one public URL. The root `Dockerfile` builds the shared package, backend and frontend; a single Express process serves `/api`, Socket.IO and the built SPA (`frontend/dist`) on `PORT` (default 5000). Unknown `/api/*` paths return a JSON 404; unknown files return 404; page navigations (GET accepting HTML, no file extension) fall back to `index.html`. The SPA is served only in production, or when `FRONTEND_DIST` points at a build; otherwise the backend is API-only.
 
-- Leave `VITE_API_URL` **unset** so the browser calls the same origin for the API and Socket.IO. Pass `VITE_FIREBASE_APIKEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_RAZORPAY_KEY_ID` (and optionally `VITE_FIREBASE_AUTH_DOMAIN`) as **build args**: they are public and embedded in the bundle. Never pass secrets as `VITE_*`.
-- Set the runtime variables from `backend/.env.example` as secrets. `FRONTEND_URL` must equal the public URL of the app (CORS and the CSRF origin check compare against it).
-- Health check: `GET /api/health` (returns 200 without touching the database).
-- Add the public domain to Firebase authorized domains.
-- Helmet's Content-Security-Policy is disabled while the SPA is served (Razorpay, OSM tiles and Cloudinary images would otherwise be blocked); `Cross-Origin-Opener-Policy` is `same-origin-allow-popups` for Google sign-in.
-- `Dockerfile.frontend` (static nginx) is an alternative for hosting the frontend separately.
+**Build-time vs runtime config.** Vite inlines `import.meta.env.*` when `vite build` runs, so changing a Kuros environment variable would not change an already-built bundle. Instead, `index.html` loads `/runtime-config.js` (a classic script, so it runs before the app bundle), which Express generates at request time from an explicit allowlist (`backend/src/config/publicConfig.ts`) and serves with `Cache-Control: no-store`. The frontend reads `window.__FOODIFY_CONFIG__` first and falls back to `import.meta.env` (local dev with `frontend/.env`). No Docker build args are needed.
+
+**Public values** (visible in any browser, not secrets): `VITE_FIREBASE_APIKEY`, `VITE_FIREBASE_PROJECT_ID` (defaults to `FIREBASE_PROJECT_ID`), `VITE_FIREBASE_AUTH_DOMAIN` (optional), `VITE_RAZORPAY_KEY_ID` (defaults to `RAZORPAY_KEY_ID`; the *key id* only, never `RAZORPAY_KEY_SECRET`). `VITE_API_URL` is not served: the browser uses the page's own origin for API and Socket.IO. Everything else in `backend/.env.example` stays server-side.
+
+**Kuros settings**
+
+- Build type: Dockerfile; Dockerfile path `Dockerfile`; context: repository root; no build args, build command or start command.
+- Container port: `5000` (or the platform's `PORT`). Health check: `GET /api/health` (JSON, no database call). The image also has a `HEALTHCHECK`.
+- Runtime variables: `NODE_ENV=production`, `FRONTEND_URL` (the exact public URL, e.g. `https://foodify.example.com`; CORS and the CSRF origin check compare against it), `MONGODB_URL`, `JWT_SECRET` (32+ chars), `VITE_FIREBASE_APIKEY`, plus the optional providers you use: `REDIS_URL`, `FIREBASE_PROJECT_ID`/`FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY`, `RESEND_API_KEY`/`EMAIL_FROM`, `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET`, `GEOAPIFY_API_KEY`, `CLOUDINARY_*`, and `DISPATCH_*` tuning.
+
+**Before go-live:** allow Kuros' outbound IPs (or `0.0.0.0/0` with a strong DB user) in MongoDB Atlas network access; add the public domain to Firebase Authentication → Authorized domains.
+
+**Security headers.** API responses keep helmet's strict default CSP. SPA responses use an allowlist CSP (Razorpay checkout, Google/Firebase sign-in, OSM tiles, https images) sent as `Content-Security-Policy-Report-Only` by default because it has not been exercised in a real browser; after verifying login, checkout and the map with the console open, set `CSP_ENFORCE=true`. `Cross-Origin-Opener-Policy` is `same-origin-allow-popups` so the Google sign-in popup works. All other helmet defaults are unchanged.
+
+**After deploying, check:** `/api/health` returns `{"status":"ok"}`; `/runtime-config.js` shows only the four public keys; opening `/signin` directly (hard refresh) loads the app; `/api/nope` returns JSON 404; Google sign-in, a test order with Razorpay, live order tracking (Socket.IO) and the browser console (no CSP reports) all work.
+
+`Dockerfile.frontend` (static nginx) is an alternative for hosting the frontend separately.
 
 ## API changes from the pre-refactor version
 

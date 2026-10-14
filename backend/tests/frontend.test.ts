@@ -6,6 +6,7 @@ import path from "node:path";
 import request from "supertest";
 import { io as connect } from "socket.io-client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { buildPublicConfig, renderRuntimeConfig } from "../src/config/publicConfig.js";
 import { createApp } from "../src/app.js";
 import { closeSocket, initSocket } from "../src/events/socket.js";
 
@@ -55,10 +56,39 @@ describe("frontend static serving", () => {
     expect((await request(spa).get("/signin").set("Accept", "application/json")).status).toBe(404);
   });
 
-  it("allows popups (Firebase sign-in) and does not apply a blocking CSP to the SPA", async () => {
+  it("allows popups (Firebase sign-in) and applies the SPA CSP in report-only mode by default", async () => {
     const res = await request(spa).get("/");
     expect(res.headers["cross-origin-opener-policy"]).toBe("same-origin-allow-popups");
+    expect(res.headers["content-security-policy-report-only"]).toContain("https://checkout.razorpay.com");
     expect(res.headers["content-security-policy"]).toBeUndefined();
+  });
+
+  it("keeps helmet's strict default CSP on API responses", async () => {
+    const res = await request(spa).get("/api/health");
+    expect(res.headers["content-security-policy"]).toContain("default-src 'self'");
+    expect(res.headers["content-security-policy"]).not.toContain("razorpay");
+  });
+
+  it("serves allowlisted runtime config as no-store JavaScript", async () => {
+    const res = await request(spa).get("/runtime-config.js");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("application/javascript");
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.text).toMatch(/^window\.__FOODIFY_CONFIG__ = Object\.freeze\(\{.*\}\);\n$/);
+  });
+
+  it("does not leak secrets or arbitrary env vars through runtime config", async () => {
+    const res = await request(spa).get("/runtime-config.js");
+    for (const secret of [
+      process.env.JWT_SECRET,
+      process.env.MONGODB_URL,
+      process.env.RAZORPAY_KEY_SECRET,
+      process.env.GEOAPIFY_API_KEY,
+    ]) {
+      expect(secret).toBeTruthy();
+      expect(res.text).not.toContain(secret as string);
+    }
+    expect(res.text).not.toMatch(/JWT|MONGODB|SECRET|PRIVATE|RESEND|CLOUDINARY/i);
   });
 
   it("stays API-only when there is no frontend build", async () => {
@@ -87,5 +117,34 @@ describe("Socket.IO next to the SPA", () => {
     expect(err.message).toBe("Authentication required");
     const polling = await request(server).get("/socket.io/?EIO=4&transport=polling").set("Accept", "text/html");
     expect(polling.text).not.toContain("SPA");
+  });
+});
+
+describe("public runtime config builder", () => {
+  const base = {
+    VITE_FIREBASE_APIKEY: undefined,
+    VITE_FIREBASE_PROJECT_ID: undefined,
+    VITE_FIREBASE_AUTH_DOMAIN: undefined,
+    VITE_RAZORPAY_KEY_ID: undefined,
+    FIREBASE_PROJECT_ID: undefined,
+    RAZORPAY_KEY_ID: undefined,
+  };
+
+  it("emits only the four allowlisted keys, omitting unset ones", () => {
+    const cfg = buildPublicConfig({
+      ...base,
+      VITE_FIREBASE_APIKEY: "web-key",
+      FIREBASE_PROJECT_ID: "proj",
+      RAZORPAY_KEY_ID: "rzp_live_x",
+      // extra server-only fields must be ignored even if passed in
+      ...({ JWT_SECRET: "s", FIREBASE_PRIVATE_KEY: "pk" } as object),
+    });
+    expect(cfg).toEqual({ VITE_FIREBASE_APIKEY: "web-key", VITE_FIREBASE_PROJECT_ID: "proj", VITE_RAZORPAY_KEY_ID: "rzp_live_x" });
+  });
+
+  it("serializes safely for embedding in a script", () => {
+    const js = renderRuntimeConfig({ VITE_FIREBASE_AUTH_DOMAIN: "</script><script>alert(1)</script>\u2028" });
+    expect(js).not.toContain("</script>");
+    expect(js).not.toContain("\u2028");
   });
 });

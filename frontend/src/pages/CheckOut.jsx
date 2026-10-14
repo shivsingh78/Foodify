@@ -18,6 +18,7 @@ import { getErrorMessage, newIdempotencyKey } from '../utils/api';
 import { useRef } from 'react';
 import '../utils/leafletIcons';
 import { geoErrorMessage, geolocationErrorMessage, MIN_SEARCH_LENGTH, reverseGeocode, searchAddresses } from '../utils/geo';
+import { readPublicConfig } from '../runtimeConfig';
 
 function RecenterMap({location}){
   const map=useMap()
@@ -185,7 +186,7 @@ function CheckOut() {
 
   const openRazorpayWindow=(orderId,razorOrder)=>{ 
     const options={
-      key:import.meta.env.VITE_RAZORPAY_KEY_ID,
+      key:readPublicConfig().VITE_RAZORPAY_KEY_ID,
       amount:razorOrder.amount,
       currency:"INR",
       name:"Foodify",
