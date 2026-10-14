@@ -11,6 +11,7 @@ import User, { type UserRole } from "../../models/user.model.js";
 import { AppError } from "../../utils/AppError.js";
 import { haversineKm, isValidLonLat, type LonLat } from "../../utils/geoMath.js";
 import { notify } from "../notification.service.js";
+import { noticeAfterLateAcceptance } from "../pickupNotice.service.js";
 import { computeEta } from "./eta.service.js";
 import { rankCandidates } from "./ranking.service.js";
 
@@ -415,6 +416,8 @@ const afterAssignment = async (order: OrderDocument, shopOrderId: Types.ObjectId
       orderId: order._id,
       shopOrderId,
     });
+    // The restaurant may have marked the order out for delivery while this was still only an offer.
+    if (shopOrder.status === "out of delivery") await noticeAfterLateAcceptance(order._id, shopOrderId, partnerId);
   } catch (error) {
     console.error("Post-assignment step failed:", error instanceof Error ? error.message : error);
   }

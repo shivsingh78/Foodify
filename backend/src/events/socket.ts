@@ -27,8 +27,11 @@ const readCookie = (header: string | undefined, name: string): string | undefine
  * socket server is not running or the user is offline: the database is the
  * source of truth and clients refetch after reconnecting.
  */
-export const emitToUser = (userId: string, event: string, payload: unknown): void => {
+export const emitToUser = (userId: string, event: string, payload: unknown): number => {
   io?.to(userRoom(userId)).emit(event, payload);
+  // How many live sockets were in the private room (0 = the user is offline or not joined): lets callers tell a
+  // missed live event from a missing persisted notification. Never includes payload data.
+  return io?.sockets.adapter.rooms.get(userRoom(userId))?.size ?? 0;
 };
 
 const LOCATION_MIN_INTERVAL_MS = 2000;

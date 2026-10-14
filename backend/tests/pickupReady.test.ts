@@ -376,3 +376,42 @@ describe("crash recovery of the pickup notice", () => {
     expect(await offerFor(other.cookie)).toBeUndefined();
   });
 });
+
+describe("restaurant marks out of delivery before the partner has accepted (regression)", () => {
+  it("tells the partner once they accept, and creates no extra offer, job or assignment", async () => {
+    const w = await world();
+    const rider = await makeRider(0);
+    await tickForced();
+    const offerId = (await offerFor(rider.cookie))!;
+    expect(offerId).toBeTruthy();
+
+    expect((await w.status("out of delivery")).status).toBe(200); // partner is still only an offer
+    expect(await readyNotes(rider.user._id)).toBe(0);
+    expect(readyEvents()).toHaveLength(0);
+
+    const accept = () => request(app).post(`/api/order/accept-order/${offerId}`).set("Cookie", rider.cookie);
+    expect((await accept()).status).toBe(200);
+    expect(await readyNotes(rider.user._id)).toBe(1);
+    expect(readyEvents()).toHaveLength(1);
+    expect(readyEvents()[0]!.userId).toBe(rider.user._id);
+
+    expect((await accept()).status).toBe(200); // repeated accept is idempotent
+    await tickAsIs();
+    expect(await readyNotes(rider.user._id)).toBe(1);
+    expect(readyEvents()).toHaveLength(1);
+    expect(await DeliveryOffer.countDocuments({ shopOrderId: w.shopOrderId })).toBe(1);
+    expect(await DeliveryAssignment.countDocuments({ shopOrderId: w.shopOrderId })).toBe(1);
+    expect(await DispatchJob.countDocuments({ order: w.orderId })).toBe(1);
+    expect((await Order.findById(w.orderId))!.shopOrders[0]!.status).toBe("out of delivery");
+  });
+
+  it("does not send the notice when the order is still preparing at acceptance", async () => {
+    const w = await world();
+    const rider = await makeRider(0);
+    await tickForced();
+    await request(app).post(`/api/order/accept-order/${await offerFor(rider.cookie)}`).set("Cookie", rider.cookie);
+    expect(await readyNotes(rider.user._id)).toBe(0);
+    expect(readyEvents()).toHaveLength(0);
+    void w;
+  });
+});

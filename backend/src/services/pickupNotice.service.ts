@@ -6,6 +6,9 @@ import { notify } from "./notification.service.js";
 
 const id = (v: unknown) => String(v);
 const MAX_ATTEMPTS = 10;
+/** One structured line per outcome; ids and states only, never tokens, addresses or message bodies. */
+const trace = (event: string, fields: Record<string, unknown>) => console.log(JSON.stringify({ component: "pickup-notice", event, ...fields }));
+
 const backoffMs = (attempt: number) => Math.min(5_000 * 2 ** (attempt - 1), 5 * 60_000);
 
 /**
@@ -35,6 +38,7 @@ export const deliverPickupNotice = async (orderId: unknown, shopOrderId: unknown
   const partnerId = so.assignedDeliveryBoy;
   if (so.status !== "out of delivery" || !partnerId) {
     await mark("done"); // nobody to tell (no partner yet, or the order already moved on)
+    trace("skipped", { orderId: id(claimed._id), shopOrderId: id(so._id), reason: partnerId ? `status_${so.status}` : "no_partner_assigned" });
     return "skipped";
   }
 
@@ -48,6 +52,7 @@ export const deliverPickupNotice = async (orderId: unknown, shopOrderId: unknown
     shopOrderId: so._id,
     dedupeKey: `ready-for-pickup:${id(claimed._id)}:${id(so._id)}`,
   });
+  trace("notification", { orderId: id(claimed._id), shopOrderId: id(so._id), partnerId: id(partnerId), result, attempt });
   if (result === "failed") {
     if (attempt >= MAX_ATTEMPTS) {
       await mark("failed");
@@ -58,7 +63,8 @@ export const deliverPickupNotice = async (orderId: unknown, shopOrderId: unknown
   await mark("done");
   if (result === "created") {
     try {
-      emitToUser(id(partnerId), "deliveryReadyForPickup", { orderId: id(claimed._id), shopOrderId: id(so._id), shopName: shop?.name ?? null, status: "out of delivery" });
+      const sockets = emitToUser(id(partnerId), "deliveryReadyForPickup", { orderId: id(claimed._id), shopOrderId: id(so._id), shopName: shop?.name ?? null, status: "out of delivery" });
+      trace("event_emitted", { orderId: id(claimed._id), partnerId: id(partnerId), connectedSockets: sockets ?? 0 });
     } catch (error) {
       console.error("pickup event failed:", error instanceof Error ? error.message : error);
     }
@@ -83,4 +89,20 @@ export const recoverPickupNotices = async (now = new Date(), limit = 50): Promis
     }
   }
   return delivered;
+};
+
+/**
+ * A partner who accepts an order the restaurant has ALREADY marked out for delivery (the partner was only an
+ * offer when the status changed, so the first notice was skipped) must still be told it is ready. Re-arms the
+ * intent for the now-assigned partner and delivers it. Idempotent: the dedupe key keeps it to one notification.
+ */
+export const noticeAfterLateAcceptance = async (orderId: unknown, shopOrderId: unknown, partnerId: unknown, now = new Date()): Promise<void> => {
+  const armed = await Order.updateOne(
+    { _id: orderId, shopOrders: { $elemMatch: { _id: shopOrderId, status: "out of delivery", assignedDeliveryBoy: partnerId, pickupNoticeStatus: { $ne: "pending" } } } },
+    { $set: { "shopOrders.$.pickupNoticeStatus": "pending", "shopOrders.$.pickupNoticeAttempts": 0, "shopOrders.$.pickupNoticeNextAt": now } },
+  );
+  if (armed.modifiedCount === 1) {
+    trace("rearmed_after_acceptance", { orderId: id(orderId), shopOrderId: id(shopOrderId), partnerId: id(partnerId) });
+    await deliverPickupNotice(orderId, shopOrderId, now);
+  }
 };
