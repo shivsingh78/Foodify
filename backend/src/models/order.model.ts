@@ -31,6 +31,13 @@ export interface IShopOrder {
   eta?: IEta | null;
   /** Frozen at partner assignment; the prediction that the ETA-accuracy metric evaluates. Never overwritten. */
   etaAtAssignment?: IEta | null;
+  /**
+   * Durable intent to tell the assigned partner the order is ready for pickup. Written in the same atomic update
+   * as the `out of delivery` status change, so a crash can never lose it; a worker delivers it idempotently.
+   */
+  pickupNoticeStatus?: "pending" | "done" | "failed" | null;
+  pickupNoticeAttempts?: number;
+  pickupNoticeNextAt?: Date | null;
 }
 
 export interface IEta {
@@ -113,6 +120,9 @@ const shopOrderSchema = new mongoose.Schema<IShopOrder>(
     pickedUpAt: { type: Date, default: null },
     eta: { type: etaSchema, default: null },
     etaAtAssignment: { type: etaSchema, default: null },
+    pickupNoticeStatus: { type: String, enum: ["pending", "done", "failed"], default: null },
+    pickupNoticeAttempts: { type: Number, default: 0 },
+    pickupNoticeNextAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
@@ -148,6 +158,8 @@ orderSchema.index({ "shopOrders.shop": 1, createdAt: -1 });
 orderSchema.index({ "shopOrders.status": 1 });
 // Orchestration scan: preparing shop orders past their expected ready time.
 orderSchema.index({ "shopOrders.status": 1, "shopOrders.readyAt": 1 });
+// Recovery sweep for undelivered pickup notices.
+orderSchema.index({ "shopOrders.pickupNoticeStatus": 1, "shopOrders.pickupNoticeNextAt": 1 }, { partialFilterExpression: { "shopOrders.pickupNoticeStatus": "pending" } });
 orderSchema.index({ razorpayOrderId: 1 });
 orderSchema.index({ razorpayPaymentId: 1 });
 orderSchema.index(

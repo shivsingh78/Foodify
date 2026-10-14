@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
 import { defaultDispatchConfig } from "../../config/dispatch.js";
 import { env } from "../../config/env.js";
+import { recoverPickupNotices } from "../pickupNotice.service.js";
 import { recoverState, registerKick, runDispatchTick } from "./dispatch.service.js";
 
 let timer: NodeJS.Timeout | null = null;
 let running = false;
 let rerun = false;
 let lastRecovery = 0;
+let lastNoticeSweep = 0;
+const NOTICE_SWEEP_INTERVAL_MS = 10_000;
 const RECOVERY_INTERVAL_MS = 60_000;
 
 const tick = async () => {
@@ -20,6 +23,11 @@ const tick = async () => {
       rerun = false;
       if (mongoose.connection.readyState !== 1) break;
       await runDispatchTick(defaultDispatchConfig(), env.DISPATCH_WORKER_CONCURRENCY);
+      if (Date.now() - lastNoticeSweep > NOTICE_SWEEP_INTERVAL_MS) {
+        lastNoticeSweep = Date.now();
+        const n = await recoverPickupNotices();
+        if (n) console.log(`Recovered ${n} pickup notice(s)`);
+      }
       if (Date.now() - lastRecovery > RECOVERY_INTERVAL_MS) {
         lastRecovery = Date.now();
         const r = await recoverState();

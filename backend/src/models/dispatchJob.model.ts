@@ -30,6 +30,9 @@ export interface IDispatchJob {
   /** Worker failures (exceptions) for this job; part of the operational metrics. */
   failures: number;
   lastError?: string | null;
+  /** Searches that found no eligible partner (observability only; does not count as an offer attempt). */
+  noCandidateRounds?: number;
+  lastNoCandidateAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +55,8 @@ const schema = new mongoose.Schema<IDispatchJob>(
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     failures: { type: Number, default: 0 },
     lastError: { type: String, default: null },
+    noCandidateRounds: { type: Number, default: 0 },
+    lastNoCandidateAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

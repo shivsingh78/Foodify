@@ -11,6 +11,7 @@ import { getRazorpay } from "../config/razorpay.js";
 import { env } from "../config/env.js";
 import { emitToUser } from "../events/socket.js";
 import { defaultDispatchConfig } from "../config/dispatch.js";
+import { deliverPickupNotice } from "./pickupNotice.service.js";
 import { acceptOffer, cancelDispatch, enqueueDispatch, getOffersForPartner, markPickedUp } from "./dispatch/dispatch.service.js";
 import DeliveryAssignment from "../models/deliveryAssignment.model.js";
 import Item from "../models/item.model.js";
@@ -365,6 +366,8 @@ export const updateOrderStatus = async (
         "shopOrders.$.status": status,
         ...(status === "cancelled" && { "shopOrders.$.cancelledAt": now }),
         ...(readyAt && { "shopOrders.$.preparingAt": now, "shopOrders.$.readyAt": readyAt }),
+        // Same atomic write as the status change: the durable intent to tell the assigned partner (see pickupNotice.service).
+        ...(status === "out of delivery" && { "shopOrders.$.pickupNoticeStatus": "pending", "shopOrders.$.pickupNoticeAttempts": 0, "shopOrders.$.pickupNoticeNextAt": now }),
       },
     },
     { new: true },
@@ -376,10 +379,18 @@ export const updateOrderStatus = async (
   if (status === "preparing" && readyAt) {
     await enqueueDispatch(order._id, shopOrder._id, readyAt);
   } else if (status === "out of delivery") {
-    if (updatedShopOrder?.assignedDeliveryBoy) await markPickedUp(updated, shopOrder._id);
-    else await enqueueDispatch(order._id, shopOrder._id, updatedShopOrder?.readyAt ?? now); // reopens an exhausted dispatch
+    if (updatedShopOrder?.assignedDeliveryBoy) {
+      await markPickedUp(updated, shopOrder._id);
+    } else await enqueueDispatch(order._id, shopOrder._id, updatedShopOrder?.readyAt ?? now, { expedite: true }); // reopens an exhausted dispatch and searches now
   } else if (status === "cancelled") {
     await cancelDispatch(order._id, shopOrder._id);
+  }
+
+  if (status === "out of delivery") {
+    // First delivery attempt happens now; if the process dies before or during it, the worker recovers the intent.
+    await deliverPickupNotice(order._id, shopOrder._id).catch((error: unknown) =>
+      console.error("pickup notice failed:", error instanceof Error ? error.message : error),
+    );
   }
 
   await notifyCustomerOfStatus(updated, shopOrder._id, status);

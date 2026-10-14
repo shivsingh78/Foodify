@@ -7,6 +7,8 @@ export interface INotification {
   title: string;
   message: string;
   data: { orderId?: Types.ObjectId; shopOrderId?: Types.ObjectId };
+  /** Optional idempotency key: the same (user, dedupeKey) is stored only once, so retries cannot duplicate a notification. */
+  dedupeKey?: string;
   read: boolean;
   readAt?: Date | null;
   createdAt: Date;
@@ -24,6 +26,7 @@ const notificationSchema = new mongoose.Schema<INotification>(
       orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
       shopOrderId: { type: mongoose.Schema.Types.ObjectId },
     },
+    dedupeKey: { type: String },
     read: { type: Boolean, default: false },
     readAt: { type: Date, default: null },
   },
@@ -31,6 +34,7 @@ const notificationSchema = new mongoose.Schema<INotification>(
 );
 
 notificationSchema.index({ user: 1, read: 1, createdAt: -1 });
+notificationSchema.index({ user: 1, dedupeKey: 1 }, { unique: true, partialFilterExpression: { dedupeKey: { $type: "string" } } });
 
 const Notification = mongoose.model<INotification>("Notification", notificationSchema);
 

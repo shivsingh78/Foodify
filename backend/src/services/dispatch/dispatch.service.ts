@@ -48,7 +48,7 @@ export const registerKick = (fn: (() => void) | null) => void (kick = fn);
  * Idempotent: creates the durable dispatch job for a shop order, or reopens an exhausted one.
  * This single upsert is the "outbox": if the process dies right after, the worker still finds the job.
  */
-export const enqueueDispatch = async (orderId: unknown, shopOrderId: unknown, readyAt: Date): Promise<void> => {
+export const enqueueDispatch = async (orderId: unknown, shopOrderId: unknown, readyAt: Date, opts: { expedite?: boolean } = {}): Promise<void> => {
   const now = new Date();
   const filter = { order: orderId, shopOrderId };
   await DispatchJob.updateOne(
@@ -60,6 +60,9 @@ export const enqueueDispatch = async (orderId: unknown, shopOrderId: unknown, re
   });
   // The owner pressing "out of delivery" gives a fresh chance to an exhausted dispatch.
   await DispatchJob.updateOne({ ...filter, status: "exhausted" }, { status: "queued", attempts: 0, nextRunAt: now, windowStartedAt: now, excludedPartners: [] });
+  // Food is ready now: a job that is only waiting out its retry delay searches again immediately. Attempts,
+  // eligibility, ranking and offer expiry are untouched; a job holding a live offer (waiting_offer) is not disturbed.
+  if (opts.expedite) await DispatchJob.updateOne({ ...filter, status: "queued", nextRunAt: { $gt: now } }, { nextRunAt: now });
   kick?.();
 };
 
@@ -201,6 +204,9 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
 
   const best = ranked[0];
   if (!best) {
+    // Observable: the job records how many searches found nobody (see getDispatchStatus) and the first one is logged.
+    const marked = await DispatchJob.findOneAndUpdate(mine, { $inc: { noCandidateRounds: 1 }, $set: { lastNoCandidateAt: now } }, { new: true }).select("noCandidateRounds").lean();
+    if (marked?.noCandidateRounds === 1) console.warn(JSON.stringify({ component: "dispatch", event: "no_eligible_partner", orderId: id(job.order), shopOrderId: id(job.shopOrderId), nearbyPartners: nearby.length }));
     await requeue(mine, cfg.retryDelayMs);
     return;
   }
@@ -625,7 +631,16 @@ export const getDispatchStatus = async (viewerId: string, role: UserRole, orderI
   const job = await DispatchJob.findOne({ order: orderId, shopOrderId }).lean();
   return {
     dispatch: job
-      ? { status: job.status, attempts: job.attempts, maxAttempts: cfg.maxAttempts, startedAt: job.startedAt, assignedAt: job.assignedAt ?? null }
+      ? {
+          status: job.status,
+          attempts: job.attempts,
+          maxAttempts: cfg.maxAttempts,
+          startedAt: job.startedAt,
+          assignedAt: job.assignedAt ?? null,
+          // How many searches found no eligible delivery partner (0 = never), and when the latest one was.
+          noCandidateRounds: job.noCandidateRounds ?? 0,
+          lastNoCandidateAt: job.lastNoCandidateAt ?? null,
+        }
       : { status: "not_started" as const },
     assigned: Boolean(so.assignedDeliveryBoy),
     orderStatus: so.status,

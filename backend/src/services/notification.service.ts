@@ -11,6 +11,8 @@ type NotifyInput = {
   message: string;
   orderId?: string | Types.ObjectId;
   shopOrderId?: string | Types.ObjectId;
+  /** Makes the call idempotent: a second notify() with the same key for the same user is a no-op. */
+  dedupeKey?: string;
 };
 
 /**
@@ -18,7 +20,10 @@ type NotifyInput = {
  * Failures are logged and swallowed: a notification problem must never roll
  * back or fail the order/payment operation that triggered it.
  */
-export const notify = async (input: NotifyInput): Promise<void> => {
+/** Result of notify(): `duplicate` means a notification with the same dedupeKey already exists. */
+export type NotifyResult = "created" | "duplicate" | "failed";
+
+export const notify = async (input: NotifyInput): Promise<NotifyResult> => {
   try {
     const doc = await Notification.create({
       user: input.userId,
@@ -26,10 +31,14 @@ export const notify = async (input: NotifyInput): Promise<void> => {
       title: input.title,
       message: input.message,
       data: { orderId: input.orderId, shopOrderId: input.shopOrderId },
+      ...(input.dedupeKey && { dedupeKey: input.dedupeKey }),
     });
     emitToUser(input.userId.toString(), "notification", doc.toJSON());
+    return "created";
   } catch (error) {
+    if (input.dedupeKey && typeof error === "object" && error !== null && "code" in error && error.code === 11000) return "duplicate"; // already sent
     console.error("notify failed:", error instanceof Error ? error.message : error);
+    return "failed";
   }
 };
 
