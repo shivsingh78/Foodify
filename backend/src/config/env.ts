@@ -16,6 +16,8 @@ const envSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(5000),
     FRONTEND_URL: optional,
+    // Built SPA to serve; defaults to ../frontend/dist in production when it exists.
+    FRONTEND_DIST: optional,
     MONGODB_URL: z.string().min(1, "MONGODB_URL is required"),
     JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
     REDIS_URL: optional,

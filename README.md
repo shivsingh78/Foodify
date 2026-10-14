@@ -150,6 +150,17 @@ Google sign-in uses `signInWithPopup`. In the Firebase Console go to **Authentic
 
 Backend tests download a MongoDB binary on first run (via `mongodb-memory-server`) and need no external services.
 
+## Combined deployment (Kuros / Docker)
+
+The root `Dockerfile` builds the shared package, backend and frontend and runs one Express process that serves `/api`, Socket.IO and the built SPA (`frontend/dist`) on `PORT` (default 5000). Unknown `/api/*` paths return a JSON 404; other page navigations fall back to `index.html`. The SPA is served only in production, or when `FRONTEND_DIST` points at a build.
+
+- Leave `VITE_API_URL` **unset** so the browser calls the same origin for the API and Socket.IO. Pass `VITE_FIREBASE_APIKEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_RAZORPAY_KEY_ID` (and optionally `VITE_FIREBASE_AUTH_DOMAIN`) as **build args**: they are public and embedded in the bundle. Never pass secrets as `VITE_*`.
+- Set the runtime variables from `backend/.env.example` as secrets. `FRONTEND_URL` must equal the public URL of the app (CORS and the CSRF origin check compare against it).
+- Health check: `GET /api/health` (returns 200 without touching the database).
+- Add the public domain to Firebase authorized domains.
+- Helmet's Content-Security-Policy is disabled while the SPA is served (Razorpay, OSM tiles and Cloudinary images would otherwise be blocked); `Cross-Origin-Opener-Policy` is `same-origin-allow-popups` for Google sign-in.
+- `Dockerfile.frontend` (static nginx) is an alternative for hosting the frontend separately.
+
 ## API changes from the pre-refactor version
 
 - `POST /api/auth/google-signup|google-signin` now require `{ idToken }` (and `mobile` for signup); no email/role in the body.

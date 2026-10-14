@@ -12,7 +12,7 @@ const notify = () => listeners.forEach((l) => l())
 
 export const connectSocket = () => {
   if (socket) return socket
-  socket = io(serverUrl, { withCredentials: true })
+  socket = io(serverUrl || undefined, { withCredentials: true })
   // Events are not replayed after a reconnect; tell the data hooks to refetch from the API.
   socket.io.on('reconnect', () => window.dispatchEvent(new Event('foodify:resync')))
   notify()

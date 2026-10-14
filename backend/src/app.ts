@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
@@ -39,13 +42,31 @@ const rejectForeignOrigin = (req: Request, _res: Response, next: NextFunction) =
   next();
 };
 
-export const createApp = (): Express => {
+// backend/dist/app.js -> <repo>/frontend/dist (the layout used by the Docker image too).
+const defaultFrontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../frontend/dist");
+
+/** Directory of the built SPA to serve, or undefined when there is none (API-only deployment). */
+const resolveFrontendDir = (explicit?: string): string | undefined => {
+  const dir = explicit ?? env.FRONTEND_DIST ?? (isProduction ? defaultFrontendDir : undefined);
+  return dir && existsSync(path.join(dir, "index.html")) ? dir : undefined;
+};
+
+export const createApp = (options: { frontendDir?: string } = {}): Express => {
   const app = express();
+  const frontendDir = resolveFrontendDir(options.frontendDir);
 
   // Required so rate limiting sees the real client IP behind a reverse proxy.
   if (isProduction) app.set("trust proxy", 1);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      // The SPA loads Razorpay, OpenStreetMap tiles and Cloudinary images, which helmet's default
+      // CSP would block, so it is only relaxed when the SPA is served from here.
+      contentSecurityPolicy: frontendDir ? false : undefined,
+      // Firebase Google sign-in uses a popup, which "same-origin" would sever.
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    }),
+  );
   if (env.NODE_ENV === "development") app.use(morgan("dev"));
 
   app.use(
@@ -78,6 +99,20 @@ export const createApp = (): Express => {
   app.use("/api/geo", geoRouter);
   app.use("/api/applications", applicationRouter);
   app.use("/api/admin/applications", adminApplicationRouter);
+
+  // Unknown API paths must stay JSON 404s and never fall through to the SPA.
+  app.use("/api", notFoundHandler);
+
+  if (frontendDir) {
+    app.use("/assets", express.static(path.join(frontendDir, "assets"), { immutable: true, maxAge: "1y" }));
+    app.use(express.static(frontendDir, { index: false }));
+    // History fallback for client-side routes (BrowserRouter): only for page navigations.
+    app.get(/^(?!\/socket\.io\/)/, (req, res, next) => {
+      if (path.extname(req.path) || !req.accepts("html")) return next();
+      res.setHeader("Cache-Control", "no-cache");
+      res.sendFile(path.join(frontendDir, "index.html"));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);
