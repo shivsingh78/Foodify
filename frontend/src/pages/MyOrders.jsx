@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import UserOrderCard from '../components/UserOrderCard';
 import OwnerOrderCard from '../components/OwnerOrderCard';
 import {setMyOrders,updateRealtimeOrderStatus} from '../redux/userSlice'
+import axios from 'axios'
+import { serverUrl } from '../config'
+import { makeOrdersRefetch } from '../utils/partnerEvents'
 
 
 
@@ -19,6 +22,10 @@ function MyOrders() {
                dispatch(setMyOrders([data,...myOrders]))
           }
      })
+     // A delivery partner accepted (or dispatch gave up): reload so the order card shows the real assignment.
+     const refetchOrders=makeOrdersRefetch({fetchOrders:async()=>(await axios.get(`${serverUrl}/api/order/my-orders`,{withCredentials:true})).data,setOrders:(orders)=>dispatch(setMyOrders(orders))})
+     useSocketEvent('deliveryAssigned',()=>{ refetchOrders() })
+     useSocketEvent('dispatchExhausted',()=>{ refetchOrders() })
      useSocketEvent('update-status',({orderId,shopId,status,userId})=>{
           if(userId === userData._id){
                dispatch(updateRealtimeOrderStatus({orderId,shopId,status}))

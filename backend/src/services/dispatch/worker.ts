@@ -46,7 +46,12 @@ const tick = async () => {
  * state change is a conditional update, so duplicate execution is harmless.
  */
 export const startDispatchWorker = (): void => {
-  if (timer || env.DISPATCH_ENABLE_WORKER !== "true") return;
+  if (env.DISPATCH_ENABLE_WORKER !== "true") {
+    console.warn(JSON.stringify({ component: "dispatch", event: "worker_disabled", reason: "DISPATCH_ENABLE_WORKER is not true; this instance will not create offers" }));
+    return;
+  }
+  if (timer) return;
+  console.log(JSON.stringify({ component: "dispatch", event: "worker_started", intervalMs: env.DISPATCH_WORKER_INTERVAL_MS, concurrency: env.DISPATCH_WORKER_CONCURRENCY }));
   registerKick(() => void setImmediate(() => void tick()));
   timer = setInterval(() => void tick(), env.DISPATCH_WORKER_INTERVAL_MS);
   timer.unref();

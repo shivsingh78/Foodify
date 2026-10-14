@@ -1,5 +1,5 @@
 import { useSocket, useSocketEvent } from '../utils/socket'
-import { makeReadyForPickupHandler, makeResyncHandler } from '../utils/partnerEvents'
+import { makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../utils/partnerEvents'
 import React from 'react'
 import Nav from './Nav'
 import { useSelector } from 'react-redux'
@@ -146,17 +146,21 @@ function DelieveryBoy() {
   
   useEffect(()=>{
     if(!socket || userData.role !== "deliveryBoy" || !navigator.geolocation) return
+    const heartbeat=startLocationHeartbeat({emit:(p)=>socket.emit('updateLocation',p)})
     const watchId=navigator.geolocation.watchPosition(
       (position)=>{
         const latitude = position.coords.latitude
         const longitude = position.coords.longitude
         setDeliveryBoyLocation({lat:latitude,lon:longitude})
-        socket.emit('updateLocation',{latitude,longitude})
+        heartbeat.update({latitude,longitude})
       },
       (error)=>console.error('Unable to read location',error),
       {enableHighAccuracy:true}
     )
-    return ()=> navigator.geolocation.clearWatch(watchId)
+    return ()=> {
+      navigator.geolocation.clearWatch(watchId)
+      heartbeat.stop()
+    }
   },[socket])
 
   

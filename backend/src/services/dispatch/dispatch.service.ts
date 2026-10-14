@@ -16,6 +16,9 @@ import { computeEta } from "./eta.service.js";
 import { rankCandidates } from "./ranking.service.js";
 
 const id = (v: unknown) => String(v);
+/** Structured, secret-free dispatch trace: ids, states and counts only. */
+const dlog = (event: string, fields: Record<string, unknown>) => console.log(JSON.stringify({ component: "dispatch", event, ...fields }));
+const countReasons = (rejected: { reason: string }[]) => rejected.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.reason]: (acc[r.reason] ?? 0) + 1 }), {});
 const LIVE_STATUSES = ["preparing", "out of delivery"] as const;
 const JOB_LEASE_MS = 60_000;
 const isDuplicateKey = (e: unknown) => typeof e === "object" && e !== null && "code" in e && e.code === 11000;
@@ -146,6 +149,7 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
   if (fresh.attempts >= cfg.maxAttempts || searchedTooLong) {
     const done = await DispatchJob.updateOne(mine, { status: "exhausted", lockedBy: null, lockedUntil: null });
     if (done.modifiedCount === 1) {
+      dlog("job_exhausted", { jobId: id(job._id), orderId: id(job.order), attempts: fresh.attempts, searchedTooLong, noCandidateRounds: fresh.noCandidateRounds ?? 0 });
       await notify({
         userId: shopOrder.owner,
         type: "order_status",
@@ -160,8 +164,9 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
   }
   const attempt = fresh.attempts + 1;
 
-  const { shop, pickup, dropoff } = await resolveGeometry(order, shopOrder);
+  const { shop, pickup, dropoff, pickupApproximate } = await resolveGeometry(order, shopOrder);
   if (!pickup || !dropoff) {
+    dlog("no_geometry", { jobId: id(job._id), orderId: id(job.order), hasPickup: Boolean(pickup), hasDropoff: Boolean(dropoff) });
     await requeue(mine, cfg.retryDelayMs);
     return;
   }
@@ -184,7 +189,7 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
   const activeCount = new Map<string, number>(busy.map((p) => [id(p), 1]));
   const excluded = new Set<string>([...fresh.excludedPartners.map(id), ...offered.map(id)]);
 
-  const { ranked } = rankCandidates(
+  const { ranked, rejected } = rankCandidates(
     {
       candidates: nearby.map((u) => ({
         id: id(u._id),
@@ -207,7 +212,22 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
   if (!best) {
     // Observable: the job records how many searches found nobody (see getDispatchStatus) and the first one is logged.
     const marked = await DispatchJob.findOneAndUpdate(mine, { $inc: { noCandidateRounds: 1 }, $set: { lastNoCandidateAt: now } }, { new: true }).select("noCandidateRounds").lean();
-    if (marked?.noCandidateRounds === 1) console.warn(JSON.stringify({ component: "dispatch", event: "no_eligible_partner", orderId: id(job.order), shopOrderId: id(job.shopOrderId), nearbyPartners: nearby.length }));
+    const rounds = marked?.noCandidateRounds ?? 0;
+    if (rounds === 1 || rounds % 5 === 0) {
+      // Why nobody qualified: how far down the funnel the partners fell out (first round, then every 5th).
+      const fresh_since = new Date(now.getTime() - cfg.locationMaxAgeMs);
+      const [partners, online, onlineFresh] = await Promise.all([
+        User.countDocuments({ role: "deliveryBoy" }),
+        User.countDocuments({ role: "deliveryBoy", isOnline: true }),
+        User.countDocuments({ role: "deliveryBoy", isOnline: true, locationUpdatedAt: { $gte: fresh_since } }),
+      ]);
+      dlog("no_eligible_partner", {
+        jobId: id(job._id), orderId: id(job.order), shopOrderId: id(job.shopOrderId), round: rounds, attempts: fresh.attempts,
+        funnel: { deliveryPartners: partners, online, onlineWithFreshLocation: onlineFresh, withinDistance: nearby.length },
+        maxLocationAgeSeconds: cfg.locationMaxAgeMs / 1000, maxPickupDistanceKm: cfg.maxPickupDistanceKm, pickupIsShopLocation: !pickupApproximate,
+        rejectedBy: countReasons(rejected), excludedPartners: fresh.excludedPartners.length,
+      });
+    }
     await requeue(mine, cfg.retryDelayMs);
     return;
   }
@@ -249,7 +269,11 @@ export const processJob = async (job: DispatchJobDocument, token: string, cfg: D
     await DeliveryOffer.updateOne({ _id: offer._id, status: "PENDING" }, { status: "CANCELLED", reason: "stale_worker", respondedAt: new Date() });
     return;
   }
-  emitToUser(id(best.partnerId), "newAssignment", await offerPayload(offer, order, shopOrder, shop?.name));
+  const sockets = emitToUser(id(best.partnerId), "newAssignment", await offerPayload(offer, order, shopOrder, shop?.name));
+  dlog("offer_created", {
+    jobId: id(job._id), orderId: id(job.order), offerId: id(offer._id), offerStatus: offer.status, partnerId: id(best.partnerId),
+    candidates: ranked.length, rejectedBy: countReasons(rejected), attempt, connectedSockets: sockets ?? 0,
+  });
 };
 
 /* ------------------------------------------------------------------ */
@@ -408,6 +432,9 @@ const afterAssignment = async (order: OrderDocument, shopOrderId: Types.ObjectId
       emitToUser(id(order.user), "etaUpdated", { orderId: id(order._id), shopOrderId: id(shopOrderId), eta: doc });
     }
     emitToUser(id(order.user), "update-status", { orderId: order._id, shopId: shopOrderId, shopOrderId, status: shopOrder.status, userId: id(order.user) });
+    // The restaurant's order card must learn a partner accepted; ids only, to its private room.
+    emitToUser(id(shopOrder.owner), "deliveryAssigned", { orderId: id(order._id), shopOrderId: id(shopOrderId) });
+    dlog("assigned", { orderId: id(order._id), shopOrderId: id(shopOrderId), partnerId, orderStatus: shopOrder.status });
     await notify({
       userId: order.user,
       type: "delivery_assigned",

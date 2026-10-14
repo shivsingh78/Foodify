@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { makeReadyForPickupHandler, makeResyncHandler } from '../src/utils/partnerEvents.js'
+import { makeOrdersRefetch, makeReadyForPickupHandler, makeResyncHandler, startLocationHeartbeat } from '../src/utils/partnerEvents.js'
 
 describe('delivery dashboard reactions', () => {
   it('shows the alert and reloads the current delivery and offers as soon as the event arrives', async () => {
@@ -30,3 +30,62 @@ describe('delivery dashboard reactions', () => {
     expect(source).toContain('makeReadyForPickupHandler')
   })
 })
+
+describe('stationary partner stays eligible', () => {
+  it('re-sends the last known position on every interval and stops when asked', () => {
+    vi.useFakeTimers()
+    const emit = vi.fn()
+    const hb = startLocationHeartbeat({ emit, intervalMs: 30_000 })
+    vi.advanceTimersByTime(60_000)
+    expect(emit).not.toHaveBeenCalled() // nothing to send before the first position
+    hb.update({ latitude: 19.2, longitude: 79.8 })
+    expect(emit).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(90_000)
+    expect(emit).toHaveBeenCalledTimes(4)
+    expect(emit).toHaveBeenLastCalledWith({ latitude: 19.2, longitude: 79.8 })
+    hb.update({ latitude: 19.3, longitude: 79.9 })
+    vi.advanceTimersByTime(30_000)
+    expect(emit).toHaveBeenLastCalledWith({ latitude: 19.3, longitude: 79.9 })
+    hb.stop()
+    const calls = emit.mock.calls.length
+    vi.advanceTimersByTime(120_000)
+    expect(emit).toHaveBeenCalledTimes(calls)
+    vi.useRealTimers()
+  })
+
+  it('beats the server freshness limit (120 s)', () => {
+    vi.useFakeTimers()
+    const stamps = []
+    const hb = startLocationHeartbeat({ emit: () => stamps.push(Date.now()) })
+    hb.update({ latitude: 1, longitude: 1 })
+    vi.advanceTimersByTime(10 * 60_000)
+    hb.stop()
+    const gaps = stamps.slice(1).map((t, i) => t - stamps[i])
+    expect(Math.max(...gaps)).toBeLessThan(120_000)
+    vi.useRealTimers()
+  })
+
+  it('wires the heartbeat into the dashboard', () => {
+    const source = readFileSync(new URL('../src/components/DelieveryBoy.jsx', import.meta.url), 'utf8')
+    expect(source).toContain('startLocationHeartbeat')
+    expect(source).toContain('heartbeat.stop()')
+  })
+})
+
+describe('restaurant order card', () => {
+  it('reloads orders into the store when told, and survives a failed fetch', async () => {
+    const setOrders = vi.fn()
+    await makeOrdersRefetch({ fetchOrders: async () => [{ _id: 'o1' }], setOrders })()
+    expect(setOrders).toHaveBeenCalledWith([{ _id: 'o1' }])
+    const failing = vi.fn()
+    await expect(makeOrdersRefetch({ fetchOrders: async () => { throw new Error('x') }, setOrders: failing })()).resolves.toBeUndefined()
+    expect(failing).not.toHaveBeenCalled()
+  })
+
+  it('MyOrders listens for assignment and exhaustion events', () => {
+    const source = readFileSync(new URL('../src/pages/MyOrders.jsx', import.meta.url), 'utf8')
+    expect(source).toContain("useSocketEvent('deliveryAssigned'")
+    expect(source).toContain("useSocketEvent('dispatchExhausted'")
+  })
+})
+
