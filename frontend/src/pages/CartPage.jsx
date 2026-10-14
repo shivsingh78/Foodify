@@ -13,7 +13,7 @@ function CartPage() {
      <div className='w-full max-w-[800px] '>
           <div className='flex items-center gap-[20px] mb-6 '>
                <div className=' z-[10]  '>
-                       <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer ' onClick={()=> navigate("/")} />
+                       <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer ' onClick={()=> navigate("/")} />
                      </div>
                      <h1 className='text-2xl font-bold text-start  '>Your Cart</h1>
 
@@ -29,9 +29,9 @@ function CartPage() {
                          ))}
 
                     </div>
-                    <div className='mt-6 bg-white p-4 rounded-xl shadow flex justify-between items-center border '>
+                    <div className='mt-6 bg-surface p-4 rounded-xl shadow flex justify-between items-center border '>
                          <h1 className='text-lg font-semibold '>Total Amount</h1>
-                         <span className='text-xl font-bold text-primary '>₹{totalAmount} </span>
+                         <span className='text-xl font-bold text-brand '>₹{totalAmount} </span>
 
                     </div>
                     <div className='mt-4 flex justify-end '>

@@ -102,14 +102,14 @@ function EditItem() {
 
 
   return (
-    <div className='flex justify-center flex-col items-center p-6 bg-gradient-to-br from-primary-soft relative to-white min-h-screen '>
+    <div className='flex justify-center flex-col items-center p-6 bg-gradient-to-br from-primary-soft relative to-background min-h-screen '>
       <div className='absolute top-[20px] left-[20px] z-[10] mb-[10px] '>
-        <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer ' onClick={()=> navigate("/")} />
+        <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer ' onClick={()=> navigate("/")} />
       </div>
-      <div className='max-w-lg w-full bg-white shadow-xl rounded-2xl p-8 border border-primary-soft '>
+      <div className='max-w-lg w-full bg-surface shadow-xl rounded-2xl p-8 border border-primary-soft '>
         <div className='flex flex-col items-center mb-6 '>
           <div className='bg-primary-soft p-4 rounded-full mb-4 '>
-            <FaUtensils className='text-primary w-16 h-16 '/>
+            <FaUtensils className='text-brand w-16 h-16 '/>
           </div>
           <div className='text-3xl font-extrabold text-ink '>
            Edit Food

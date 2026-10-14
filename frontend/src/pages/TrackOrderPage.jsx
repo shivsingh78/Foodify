@@ -43,14 +43,14 @@ function TrackOrderPage() {
   return (
     <div className='max-w-4xl mx-auto p-4 flex flex-col gap-6 '>
      <div className='relative flex items-center gap-4 top-[20px] left-[20px] z-[10] mb-[10px] '>
-             <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer ' onClick={()=> navigate("/my-orders")} />
+             <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer ' onClick={()=> navigate("/my-orders")} />
                <h1 className="text-2xl font-bold md:text-center ">Track Order </h1>
            </div>
 
            {currentOrder?.shopOrders?.map((shopOrder,index)=>(
-               <div className="bg-white p-4 rounded-2xl shadow-md border border-line space-y-4 " key={index}>
+               <div className="bg-surface p-4 rounded-2xl shadow-md border border-line space-y-4 " key={index}>
                     <div >
-                         <p className="text-lg font-bold mb-2 text-primary  ">
+                         <p className="text-lg font-bold mb-2 text-brand  ">
                               {shopOrder.shop.name}
                          </p>
                          <p >

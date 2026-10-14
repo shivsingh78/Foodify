@@ -75,14 +75,14 @@ function CreateEditShop() {
 
 
   return (
-    <div className='flex justify-center flex-col items-center p-6 bg-gradient-to-br from-primary-soft relative to-white min-h-screen '>
+    <div className='flex justify-center flex-col items-center p-6 bg-gradient-to-br from-primary-soft relative to-background min-h-screen '>
       <div className='absolute top-[20px] left-[20px] z-[10] mb-[10px] '>
-        <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer ' onClick={()=> navigate("/")} />
+        <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer ' onClick={()=> navigate("/")} />
       </div>
-      <div className='max-w-lg w-full bg-white shadow-xl rounded-2xl p-8 border border-primary-soft '>
+      <div className='max-w-lg w-full bg-surface shadow-xl rounded-2xl p-8 border border-primary-soft '>
         <div className='flex flex-col items-center mb-6 '>
           <div className='bg-primary-soft p-4 rounded-full mb-4 '>
-            <FaUtensils className='text-primary w-16 h-16 '/>
+            <FaUtensils className='text-brand w-16 h-16 '/>
           </div>
           <div className='text-3xl font-extrabold text-ink '>
             {myShopData?"Edit Shop" : "Add Shop"}
@@ -120,7 +120,7 @@ function CreateEditShop() {
             <LocationPicker value={point} onChange={onPlace} />
             <p className='mt-1 text-xs text-muted'>Delivery partners are matched by their distance from this point, so place the pin exactly on your restaurant.</p>
           </div>
-          {error && <p role='alert' className='text-sm text-red-600'>{error}</p>}
+          {error && <p role='alert' className='text-sm text-danger'>{error}</p>}
           <button className='w-full bg-primary text-white px-6  py-3 rounded-lg font-semibold shadow-md hover:bg-primary-hover hover:shadow-lg transition-all duration-200 cursor-pointer ' onClick={handleSubmit} disabled={loading} >{loading?<ClipLoader size={20} color="white" />:"Save" }</button>
         </form>
       </div>

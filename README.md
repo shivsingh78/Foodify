@@ -148,6 +148,15 @@ The engine is **off by default**. Nothing runs, nothing is written and nobody is
 
 **Limitations**: only one anomaly type; no automatic action can unblock a restaurant that never updates the order (it escalates to a human); there is no admin UI yet (API only); counters are per instance; the "overdue" threshold is relative to the owner's own estimate, so an owner who sets a very long prep time delays detection; orders that were already late at activation are never handled automatically (see below).
 
+## Themes (light / dark)
+
+The whole UI is themed through design tokens in `frontend/src/index.css`: the light palette lives in `@theme`, and `html[data-theme="dark"]` overrides the same `--color-*` names, so every utility (`bg-surface`, `text-ink`, `border-line`, ...) follows the active theme with no per-theme classes. Use tokens, never `bg-white` or raw palette colours (a unit test fails on them). `text-brand` is the brand colour for text/icons (readable in both themes); `bg-primary` is the button fill with white text.
+
+- **Preference**: the explicit choice is saved in `localStorage` (`foodify-theme`). With no saved choice, the operating-system preference decides and live changes are followed. `public/theme-init.js` applies the theme before first paint (an external script, so it works under the CSP); `src/theme/` holds the single shared store (`useTheme`) used by every component.
+- **Switch**: `components/ThemeToggle.jsx`, in the navigation bar, on the sign-in/sign-up/reset screens, and as a small floating button on every other page (never two on one screen).
+- **Unthemed on purpose**: map tiles and the Leaflet map, food photos and the logo, and the Razorpay/Google sign-in windows are left as their providers render them.
+- Text colour pairs are checked at WCAG AA (4.5:1) in both themes by `frontend/tests/theme.test.js`; colour transitions are skipped when the OS asks for reduced motion.
+
 ## Email with Resend
 
 Password-reset and delivery OTP emails use the [Resend](https://resend.com) API (no Gmail, 2-Step Verification or app password needed).

@@ -99,7 +99,7 @@ element.addEventListener("scroll", cateHandler);
      <Nav/>
 
      {searchItems && searchItems.length>0 && (
-      <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-white shadow-md rounded-2xl mt-4 ">
+      <div className="w-full max-w-6xl flex flex-col gap-5 items-start p-5 bg-surface shadow-md rounded-2xl mt-4 ">
         <h1 className='text-ink text-2xl sm:text-3xl font-semibold border-b border-line pb-2 '>Search Results </h1>
         <div className="w-full h-auto flex flex-wrap gap-6 justify-center ">
           {searchItems.map((item)=>(

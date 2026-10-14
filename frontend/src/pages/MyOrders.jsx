@@ -38,7 +38,7 @@ function MyOrders() {
      <div className="w-full max-w-[800px] p-4 ">
           <div className='flex items-center gap-[20px] mb-6 '>
                          <div className=' z-[10]  '>
-        <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer ' onClick={()=> navigate("/")} />
+        <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer ' onClick={()=> navigate("/")} />
       </div>
       <h1 className='text-2xl font-bold text-start  '>My orders</h1>
           

@@ -26,6 +26,7 @@ import BecomeDeliveryPartner from './pages/BecomeDeliveryPartner';
 import MyApplications from './pages/MyApplications';
 import AdminApplications from './pages/AdminApplications';
 import { connectSocket, disconnectSocket } from './utils/socket';
+import ThemeToggle from './components/ThemeToggle';
 
 
 function App() {
@@ -58,7 +59,13 @@ function App() {
     </div>
   );
 
+  // Screens that already carry the switch (Nav on the home dashboards, AuthLayout on sign-in/up/reset) must not
+  // show a second one; every other page gets a small floating switch so the theme is changeable everywhere.
+  const hasOwnToggle = ['/', '/signin', '/signup', '/forgot-password'].includes(location.pathname)
+
   return (
+   <>
+   {!hasOwnToggle && <ThemeToggle className="fixed bottom-4 right-4 z-[9998] shadow-lg" />}
    <Routes>
     <Route path='/signup' element={!userData?<SignUp/>: <Navigate to={afterLogin} /> } />
      <Route path='/signin' element={!userData?<SignIn/>: <Navigate to={afterLogin} />} />
@@ -78,7 +85,7 @@ function App() {
      <Route path='/my-applications' element={userData?<MyApplications/>:signinFor} />
      <Route path='/admin/applications' element={adminOnly(<AdminApplications/>)} />
    </Routes>
-   
+   </>
   )
 }
 

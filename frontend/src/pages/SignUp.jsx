@@ -93,7 +93,7 @@ function SignUp() {
 
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{' '}
-        <button type="button" onClick={() => navigate('/signin')} className="font-semibold text-primary hover:underline">
+        <button type="button" onClick={() => navigate('/signin')} className="font-semibold text-brand hover:underline">
           Sign in
         </button>
       </p>

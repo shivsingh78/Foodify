@@ -42,7 +42,7 @@ function UserOrderCard({data}) {
 
 
   return (
-    <div className='bg-white rounded-lg shadow p-4 space-y-4 '>
+    <div className='bg-surface rounded-lg shadow p-4 space-y-4 '>
      <div className="flex justify-between border-b pb-2 ">
           <div className=" ">
                <p className='font-semibold '>order #{data._id.slice(-6)} </p>
@@ -61,7 +61,7 @@ function UserOrderCard({data}) {
                     <p>{shopOrder.shop.name} </p>
                     <div className="flex space-x-4 overflow-auto pb-2 ">
                          {shopOrder.shopOrderItems.map((item,index)=>(
-               <div key={index} className="flex-shrink-0 w-40 border rounded-lg p-2 bg-white ">
+               <div key={index} className="flex-shrink-0 w-40 border rounded-lg p-2 bg-surface ">
                     <img src={item.item.image} alt={item.name} />
                     <p className='text-sm font-semibold mt-1 '>{item.name} </p>
                     <p className='text-xs text-muted'>{`Qty: ${item.quantity} x ₹ ${item.price}`} </p>

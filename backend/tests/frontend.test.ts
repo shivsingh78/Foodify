@@ -14,6 +14,7 @@ const dir = mkdtempSync(path.join(tmpdir(), "foodify-spa-"));
 mkdirSync(path.join(dir, "assets"));
 writeFileSync(path.join(dir, "index.html"), "<!doctype html><div id=root>SPA</div>");
 writeFileSync(path.join(dir, "assets", "app-abc.js"), "console.log(1)");
+writeFileSync(path.join(dir, "theme-init.js"), "document.documentElement.setAttribute('data-theme','light')");
 
 const spa = createApp({ frontendDir: dir });
 const apiOnly = createApp({ frontendDir: path.join(dir, "missing") });
@@ -27,6 +28,14 @@ describe("frontend static serving", () => {
       expect(res.status).toBe(200);
       expect(res.text).toContain("SPA");
     }
+  });
+
+  it("serves the pre-paint theme script as JavaScript (never the SPA document), so it works under the CSP", async () => {
+    const res = await request(spa).get("/theme-init.js");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("javascript");
+    expect(res.text).toContain("data-theme");
+    expect(res.text).not.toContain("SPA");
   });
 
   it("serves hashed assets with long-lived caching", async () => {

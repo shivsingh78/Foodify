@@ -18,7 +18,7 @@ function NotificationBell() {
     <div className="relative">
       <button
         type="button"
-        className="relative rounded-full p-2 text-primary hover:bg-primary-soft"
+        className="relative rounded-full p-2 text-brand hover:bg-primary-soft"
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={open}
@@ -36,7 +36,7 @@ function NotificationBell() {
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="font-semibold text-ink">Notifications</h2>
             {unreadCount > 0 && (
-              <button type="button" onClick={() => markAllRead()} className="text-sm font-medium text-primary hover:underline">
+              <button type="button" onClick={() => markAllRead()} className="text-sm font-medium text-brand hover:underline">
                 Mark all read
               </button>
             )}

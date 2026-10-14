@@ -22,25 +22,25 @@ function OwnerItemCard({data}) {
           
      }
   return (
-    <div className='flex bg-white rounded-lg shadow-md overflow-hidden border border-primary w-full max-w-2xl '>
+    <div className='flex bg-surface rounded-lg shadow-md overflow-hidden border border-primary w-full max-w-2xl '>
      <div className='w-36 flex-shrink-0 bg-surface-muted'>
           <img src={data.image} alt={data.name} className='w-full h-full object-cover' />
      </div>
      <div className='flex flex-col justify-between p-3 flex-1 ' >
           <div>
-               <h2 className='text-base font-semibold text-primary  '>{data.name} </h2>
+               <h2 className='text-base font-semibold text-brand  '>{data.name} </h2>
           <p><span className='font-medium text-ink '>Category:</span> {data.category} </p>
           <p><span className='font-medium text-ink '>Food Type:</span> {data.foodType} </p></div>
 
           <div className='flex items-center justify-between '>
-               <div className='text-primary   font-bold'>Price: {data.price} </div>
+               <div className='text-brand   font-bold'>Price: {data.price} </div>
 
                <div className='flex items-center  gap-2 '>
-                    <div className='p-2 rounded-full hover:bg-primary/10 text-primary cursor-pointer  ' onClick={()=>navigate(`/edit-item/${data._id}`)} >
+                    <div className='p-2 rounded-full hover:bg-primary/10 text-brand cursor-pointer  ' onClick={()=>navigate(`/edit-item/${data._id}`)} >
                           <FaPen size={16} />
 
                     </div>
-                    <div className='p-2 rounded-full hover:bg-primary/10 text-primary cursor-pointer '  onClick={handleDelete} >
+                    <div className='p-2 rounded-full hover:bg-primary/10 text-brand cursor-pointer '  onClick={handleDelete} >
                           <FaTrashAlt size={16} />
                          
 

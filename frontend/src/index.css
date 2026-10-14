@@ -8,6 +8,9 @@
 @theme {
   --color-primary: #c2410c;
   --color-primary-hover: #9a3412;
+  /* Brand colour for TEXT and icons (text-brand). Separate from the fill (bg-primary, white text on top)
+     because one orange cannot be both a readable text colour on dark surfaces and a fill for white text. */
+  --color-brand: #c2410c;
   --color-primary-soft: #fff1e6;
   --color-accent: #e8991f;
   --color-brand-brown: #5a2d00;
@@ -17,7 +20,7 @@
   --color-ink: #2a211b;
   --color-muted: #6b6259;
   --color-line: #e7dfd3;
-  --color-success: #15803d;
+  --color-success: #14753a;
   --color-success-soft: #e8f6ec;
   --color-warning: #b45309;
   --color-warning-soft: #fdf3e0;
@@ -31,9 +34,64 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/*
+ * Dark theme: the same token names with different values, selected by <html data-theme="dark"> (set before
+ * first paint by public/theme-init.js, then managed by src/theme). Every utility (bg-surface, text-ink, ...)
+ * reads these variables, so components need no per-theme classes. Text pairs are >= 4.5:1 (WCAG AA).
+ */
+html[data-theme="dark"] {
+  --color-primary: #c2410c;
+  --color-primary-hover: #dc4a12;
+  --color-primary-soft: #3a2316;
+  --color-brand: #fb923c;
+  --color-accent: #f2a93b;
+  --color-brand-brown: #f6c28b;
+  --color-background: #14110f;
+  --color-surface: #1d1916;
+  --color-surface-muted: #2a2420;
+  --color-ink: #f3ece4;
+  --color-muted: #a99f94;
+  --color-line: #3b342d;
+  --color-success: #4ade80;
+  --color-success-soft: #12291a;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #33260c;
+  --color-danger: #f87171;
+  --color-danger-soft: #3b1818;
+  --color-info: #93c5fd;
+  --color-info-soft: #172554;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 20px rgb(0 0 0 / 0.35);
+}
+
 @layer base {
   html {
     background-color: var(--color-background);
+    color-scheme: light;
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
+  }
+  /* Bare `border` utilities default to the theme's line colour instead of the text colour. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+  /* A short, restrained fade while switching theme; skipped entirely for reduced motion. */
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html.theme-transition,
+    html.theme-transition * {
+      transition: none !important;
+    }
+    html {
+      scroll-behavior: auto;
+    }
   }
   body {
     margin: 0;
@@ -62,10 +120,18 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-semibold text-white transition-colors hover:bg-primary-hover;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-primary-hover;
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-surface px-4 py-2.5 font-medium text-ink transition-colors hover:bg-surface-muted;
+  }
+  /* Compact icon-only control (theme switch, close buttons, ...). */
+  .icon-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-brand shadow-sm transition-colors hover:bg-primary-soft;
+  }
+  /* Small tinted pill for statuses: always pair with text, never colour alone. */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-brand;
   }
   .input {
     @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-ink placeholder:text-muted/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30;

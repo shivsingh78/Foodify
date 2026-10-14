@@ -232,13 +232,13 @@ function CheckOut() {
     
     <div className='min-h-screen bg-background flex items-center justify-center p-6 '>
        <div className='absolute top-[20px] left-[20px]  z-[10]  ' onClick={()=> navigate("/cart")}>
-        <IoIosArrowRoundBack  size={35} className=' text-primary cursor-pointer '  />
+        <IoIosArrowRoundBack  size={35} className=' text-brand cursor-pointer '  />
       </div>
-      <div className='w-full max-w-[900px] bg-white rounded-2xl shadow-xl p-6 space-y-6 '>
+      <div className='w-full max-w-[900px] bg-surface rounded-2xl shadow-xl p-6 space-y-6 '>
         <h1 className='text-2xl font-bold text-ink '>Checkout</h1>
         {/*section for map */}
         <section>
-          <h2 className='text-lg font-semibold mb-2 flex items-center gap-2 text-ink '>< IoLocationSharp className='text-primary  ' /> Delivery Location</h2>
+          <h2 className='text-lg font-semibold mb-2 flex items-center gap-2 text-ink '>< IoLocationSharp className='text-brand  ' /> Delivery Location</h2>
           <div className='relative mb-3'>
             <div className='flex gap-2'>
               <input type="text" role="combobox" aria-expanded={suggestions.length>0} aria-controls="address-suggestions" aria-label="Delivery address" autoComplete="off" className='flex-1 border border-line rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary ' placeholder='Search your delivery address…' value={addressInput}  onChange={(e)=>setAddressInput(e.target.value)} />
@@ -249,7 +249,7 @@ function CheckOut() {
             {searching && <p className='mt-1 text-xs text-muted' role="status">Searching…</p>}
             {searchNotice && <p className='mt-1 text-xs text-muted' role="status">{searchNotice}</p>}
             {suggestions.length>0 && (
-              <ul id="address-suggestions" role="listbox" className='absolute z-[1000] mt-1 w-full max-h-60 overflow-auto rounded-lg border border-line bg-white shadow-lg'>
+              <ul id="address-suggestions" role="listbox" className='absolute z-[1000] mt-1 w-full max-h-60 overflow-auto rounded-lg border border-line bg-surface shadow-lg'>
                 {suggestions.map((place,i)=>(
                   <li key={`${place.latitude},${place.longitude},${i}`} role="option">
                     <button type="button" className='block w-full px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted' onClick={()=>chooseSuggestion(place)}>
@@ -346,7 +346,7 @@ function CheckOut() {
             <span>Delivery Fee</span>
             <span>{deliveryFee==0?"Free":" ₹"+ deliveryFee} </span>
             </div>
-            <div className='flex justify-between text-lg font-bold text-primary '>
+            <div className='flex justify-between text-lg font-bold text-brand '>
             <span>Total</span>
             <span>{`₹ ${amountWithDeliveryFee}`} </span>
             </div>

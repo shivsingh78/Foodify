@@ -62,12 +62,12 @@ function OwnerOrderCard({data}) {
   }
 
   return (
-    <div className='bg-white rounded-lg shadow p-4 space-y-4 '>
+    <div className='bg-surface rounded-lg shadow p-4 space-y-4 '>
       <div>
         <h2 className='text-lg font-semibold text-ink '>{data.user.fullName} </h2>
         <p className='text-sm text-muted '>{data.user.email} </p>
         <p className='flex items-center gap-2 text-sm text-muted '><MdPhone /> <span>{data.user.mobile}</span> </p>
-        {data.paymentMethod === "online"? (<p className='gap-2 text-sm text-muted '>payment: <span className='text-primary-hover'>{data.payment?"true":"false"}</span> </p> ):(<p >Payment Method: <span className='text-info'>  {data.paymentMethod}</span> </p>)}
+        {data.paymentMethod === "online"? (<p className='gap-2 text-sm text-muted '>payment: <span className='text-brand'>{data.payment?"true":"false"}</span> </p> ):(<p >Payment Method: <span className='text-info'>  {data.paymentMethod}</span> </p>)}
         
       </div>
 
@@ -79,7 +79,7 @@ function OwnerOrderCard({data}) {
       <div >
          <div className="flex space-x-4 overflow-auto pb-2 ">
                          {data.shopOrders.shopOrderItems.map((item)=>(
-               <div key={item._id ?? item.name} className="flex-shrink-0 w-40 border border-line rounded-lg p-2 bg-white ">
+               <div key={item._id ?? item.name} className="flex-shrink-0 w-40 border border-line rounded-lg p-2 bg-surface ">
                     <img src={item.item.image} alt={item.name} />
                     <p className='text-sm font-semibold mt-1 '>{item.name} </p>
                     <p className='text-xs text-muted'>{`Qty: ${item.quantity} x ₹ ${item.price}`} </p>
@@ -91,7 +91,7 @@ function OwnerOrderCard({data}) {
       </div>
 
       <div className="flex justify-between items-center mt-auto pt-3 border-t border-line ">
-        <span className='text-sm '>status:<span className='font-semibold capitalize text-primary '>  {data.shopOrders.status} </span></span>
+        <span className='text-sm '>status:<span className='font-semibold capitalize text-brand '>  {data.shopOrders.status} </span></span>
         {NEXT_STATUSES[data.shopOrders.status] && (
           <select
             aria-label="Update order status"
@@ -112,7 +112,7 @@ function OwnerOrderCard({data}) {
           <p className='font-medium'>Delivery partner:</p>
           {data.shopOrders.assignedDeliveryBoy ? (<div>{data.shopOrders.assignedDeliveryBoy.fullName} - {data.shopOrders.assignedDeliveryBoy.mobile} </div> ): (<div>
             <p role='status'>{describeDispatchSummary(summary)}</p>
-            <button type='button' disabled={retrying} onClick={handleRetryDispatch} className='mt-2 block rounded-md border border-primary px-3 py-1 text-xs font-semibold text-primary hover:bg-white disabled:opacity-60'>{retrying ? 'Searching…' : 'Find a delivery partner again'}</button>
+            <button type='button' disabled={retrying} onClick={handleRetryDispatch} className='mt-2 block rounded-md border border-primary px-3 py-1 text-xs font-semibold text-brand hover:bg-surface disabled:opacity-60'>{retrying ? 'Searching…' : 'Find a delivery partner again'}</button>
             {retryMessage && <p role='status' className='mt-1 text-xs text-muted'>{retryMessage}</p>}
           </div> ) }
         </div>

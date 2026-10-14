@@ -66,7 +66,7 @@ function SignIn() {
         </Field>
 
         <div className="mb-4 text-right">
-          <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm font-medium text-primary hover:underline">
+          <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm font-medium text-brand hover:underline">
             Forgot password?
           </button>
         </div>
@@ -89,7 +89,7 @@ function SignIn() {
 
       <p className="mt-6 text-center text-sm text-muted">
         New to Foodify?{' '}
-        <button type="button" onClick={() => navigate('/signup')} className="font-semibold text-primary hover:underline">
+        <button type="button" onClick={() => navigate('/signup')} className="font-semibold text-brand hover:underline">
           Create an account
         </button>
       </p>

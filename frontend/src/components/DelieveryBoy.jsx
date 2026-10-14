@@ -205,32 +205,32 @@ function DelieveryBoy() {
     <div className='w-full min-h-screen bg-background flex flex-col items-center overflow-y-auto '>
       <Nav/>
       <div className="w-full max-w-[800px] flex flex-col gap-5 items-center ">
-        {geoError && <p role="alert" className="w-[90%] rounded-xl bg-red-50 p-3 text-center text-sm font-semibold text-red-700">{geoError}</p>}
-        {pickupAlert && !!currentOrder && <p role="status" className="w-[90%] rounded-xl bg-primary-soft p-3 text-center text-sm font-semibold text-primary">{pickupAlert}</p>}
-        <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-primary-soft text-center gap-2">
-          <h1 className="text-xl font-bold text-primary ">Welcome, {userData.fullName }</h1>
-          <p className=' text-ink'><span className="font-semibold text-primary ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold text-primary">Longitude </span>
+        {geoError && <p role="alert" className="w-[90%] rounded-xl bg-danger-soft p-3 text-center text-sm font-semibold text-danger">{geoError}</p>}
+        {pickupAlert && !!currentOrder && <p role="status" className="w-[90%] rounded-xl bg-primary-soft p-3 text-center text-sm font-semibold text-brand">{pickupAlert}</p>}
+        <div className="bg-surface rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-primary-soft text-center gap-2">
+          <h1 className="text-xl font-bold text-brand ">Welcome, {userData.fullName }</h1>
+          <p className=' text-ink'><span className="font-semibold text-brand ">Latitude: </span>{deliveryBoyLocation?.lat }  <span className="font-semibold text-brand">Longitude </span>
           {deliveryBoyLocation?.lon}
           </p>
         </div>
 
        
 
-        <div className="bg-white rounded-2xl shadow-md p-5 w-[90%] mb-6 border border-primary-soft  ">
-          <h1 className="text-lg font-bold mb-3 text-primary  ">Today Deliveries</h1>
+        <div className="bg-surface rounded-2xl shadow-md p-5 w-[90%] mb-6 border border-primary-soft  ">
+          <h1 className="text-lg font-bold mb-3 text-brand  ">Today Deliveries</h1>
           <ResponsiveContainer width="100%" height={200} >
             <BarChart data={todayDeliveries} >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" tickFormatter={(h)=>`${h}:00`} />
-                <YAxis allowDecimals={false} />
-                <Tooltip formatter={(value=>[value,"orders"])} labelFormatter={label=>`${label}:00`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line)" />
+              <XAxis dataKey="hour" tickFormatter={(h)=>`${h}:00`} tick={{ fill: "var(--color-muted)" }} stroke="var(--color-line)" />
+                <YAxis allowDecimals={false} tick={{ fill: "var(--color-muted)" }} stroke="var(--color-line)" />
+                <Tooltip formatter={(value=>[value,"orders"])} labelFormatter={label=>`${label}:00`} contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-line)", borderRadius: 8, color: "var(--color-ink)" }} labelStyle={{ color: "var(--color-ink)" }} cursor={{ fill: "var(--color-surface-muted)" }} />
                   <Bar dataKey="count" fill='var(--color-primary)' />
 
             </BarChart>
 
           </ResponsiveContainer>
 
-          <div className="max-w-sm mx-auto mt-6 p-6 bg-white rounded-2xl shadow-lg text-center ">
+          <div className="max-w-sm mx-auto mt-6 p-6 bg-surface rounded-2xl shadow-lg text-center ">
             <h1 className="text-xl font-semibold text-ink mb-2  ">Today's Earning </h1>
             <span className="text-3xl font-bold text-success  ">₹{totalEarning} </span>
           </div>
@@ -238,7 +238,7 @@ function DelieveryBoy() {
 
         </div>
 
-       {!currentOrder &&  <div className="bg-white rounded-2xl p-5 shadow-md w-[90%] border  border-primary-soft">
+       {!currentOrder &&  <div className="bg-surface rounded-2xl p-5 shadow-md w-[90%] border  border-primary-soft">
           <h1 className="text-lg font-bold mb-4 flex items-center gap-2 ">Available Orders </h1>
 
           <div className='space-y-4 '>
@@ -269,7 +269,7 @@ function DelieveryBoy() {
         </div>}
 
         {currentOrder && 
-        <div className='bg-white rounded-2xl p-5 shadow-md w-[90%] border border-primary-soft '>
+        <div className='bg-surface rounded-2xl p-5 shadow-md w-[90%] border border-primary-soft '>
           <h2 className='text-lg font-bold mb-3 '> 📦 Current Order </h2>
           <div className='border rounded-lg p-4 mb-3 '>
             <p className="font-semibold text-sm ">{currentOrder?.shopOrder.shop.name } </p>
@@ -296,8 +296,8 @@ function DelieveryBoy() {
           </button>)
           :
           (<div className='t-4 p-4 border rounded-xl bg-surface-muted '>
-            <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-primary '>{currentOrder.user.fullName}</span> </p>
-            <input type="text" className='w-full  border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400 ' placeholder='Enter OTP'  onChange={(e)=>setOtp(e.target.value)} value={otp}/>
+            <p className='text-sm font-semibold mb-2 '>Enter Otp send to <span className='text-brand '>{currentOrder.user.fullName}</span> </p>
+            <input type="text" className='w-full  border px-3 py-2 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40 ' placeholder='Enter OTP'  onChange={(e)=>setOtp(e.target.value)} value={otp}/>
 
             {message && <p className='text-center text-success ' >{message} </p> }
            

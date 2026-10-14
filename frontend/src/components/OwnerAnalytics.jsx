@@ -79,9 +79,9 @@ function OwnerAnalytics() {
                   <ResponsiveContainer>
                     <BarChart data={data.revenueByDay}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-line)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} width={48} />
-                      <Tooltip formatter={(v) => money(v)} />
+                      <XAxis dataKey="date" tick={{ fill: "var(--color-muted)", fontSize: 11 }} stroke="var(--color-line)" />
+                      <YAxis tick={{ fill: "var(--color-muted)", fontSize: 11 }} stroke="var(--color-line)" width={48} />
+                      <Tooltip formatter={(v) => money(v)} contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-line)", borderRadius: 8, color: "var(--color-ink)" }} labelStyle={{ color: "var(--color-ink)" }} cursor={{ fill: "var(--color-surface-muted)" }} />
                       <Bar dataKey="revenue" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

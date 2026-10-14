@@ -72,7 +72,7 @@ function LocationPicker({ value, onChange }) {
       <div className="relative">
         <input className="input" role="combobox" aria-expanded={suggestions.length > 0} aria-label="Search address" autoComplete="off" placeholder="Search the restaurant address…" value={text} onChange={(e) => setText(e.target.value)} />
         {suggestions.length > 0 && (
-          <ul role="listbox" className="absolute z-[1000] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-line bg-white shadow-lg">
+          <ul role="listbox" className="absolute z-[1000] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-line bg-surface shadow-lg">
             {suggestions.map((p, i) => (
               <li key={`${p.latitude},${p.longitude},${i}`} role="option">
                 <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-muted" onClick={() => choose(p)}>{p.formatted}</button>
